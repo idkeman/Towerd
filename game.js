@@ -191,7 +191,7 @@
       if(e.slowUntil<=state.time)e.slow=1;
       e.distance+=e.speed*e.slow*dt;e.progress=e.distance/pathLength;
       const pos=pointOnPath(e.distance);e.x=pos.x;e.y=pos.y;
-      if(e.distance>=pathLength){
+      if(e.distance>=getPathLength()){
         e.dead=true;state.lives--;state.shake=8;burst(e.x,e.y,"#ef4444",18);floatText(e.x,e.y,"-1 LIFE");
         if(state.lives<=0){lose();return;}
       }
@@ -217,7 +217,7 @@
       state.waveActive=false;
       const bonus=25+state.wave*3;state.gold+=bonus;
       toast("WAVE CLEAR  +$"+bonus);
-      if(state.wave>=30)win();
+      if(state.wave>=100)win();
       else if(state.autoWave)state.betweenTimer=1.5;
     }
     updateUI();
@@ -347,7 +347,7 @@
     }
     const progress=state.spawnTotal?Math.min(1,1-(state.spawnLeft/state.spawnTotal)):(state.waveActive?0:1);
     document.getElementById("waveProgressBar").style.width=(progress*100)+"%";
-    const wb=document.getElementById("waveButton");wb.textContent=state.waveActive?"WAVE IN PROGRESS":state.wave>=30?"COMPLETE":"START WAVE";wb.disabled=state.waveActive||state.wave>=30;
+    const wb=document.getElementById("waveButton");wb.textContent=state.waveActive?"WAVE IN PROGRESS":state.wave>=100?"COMPLETE":"START WAVE";wb.disabled=state.waveActive||state.wave>=30;
   }
 
   let toastTimer=0;
