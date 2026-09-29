@@ -6,16 +6,17 @@
   const ctx = canvas.getContext("2d");
   const W = canvas.width, H = canvas.height;
 
-  const path = [
-    {x:-30,y:110},{x:180,y:110},{x:180,y:235},{x:410,y:235},
-    {x:410,y:105},{x:650,y:105},{x:650,y:330},{x:930,y:330},
-    {x:930,y:175},{x:1182,y:175}
+  const MAPS=[
+    {name:"Crossroads",desc:"The original winding route.",path:[{x:-30,y:110},{x:180,y:110},{x:180,y:235},{x:410,y:235},{x:410,y:105},{x:650,y:105},{x:650,y:330},{x:930,y:330},{x:930,y:175},{x:1182,y:175}],spots:[[90,190],[90,310],[245,175],[275,300],[350,170],[350,330],[505,175],[550,300],[590,430],[720,210],[720,410],[815,255],[815,430],[1000,265],[1010,410],[1080,270],[1080,410]]},
+    {name:"Switchback",desc:"A long zig-zag route.",path:[{x:-30,y:90},{x:220,y:90},{x:220,y:210},{x:520,y:210},{x:520,y:350},{x:220,y:350},{x:220,y:500},{x:560,y:500},{x:560,y:430},{x:1182,y:430}],spots:[[95,170],[330,125],[330,285],[95,420],[350,420],[650,350],[700,500],[820,350],[930,500],[1040,350],[1080,500]]},
+    {name:"Spiral",desc:"A coiling route around the center.",path:[{x:-30,y:90},{x:250,y:90},{x:250,y:540},{x:850,y:540},{x:850,y:120},{x:450,y:120},{x:450,y:400},{x:1050,y:400},{x:1050,y:250},{x:1182,y:250}],spots:[[120,180],[120,400],[350,260],[350,500],[650,70],[650,260],[650,470],[950,180],[950,330],[1100,330]]},
+    {name:"Four Corners",desc:"Four sweeping corners and long lanes.",path:[{x:-30,y:160},{160,y:160},{160,y:80},{1000,y:80},{1000,y:560},{160,y:560},{160,y:330},{1182,y:330}],spots:[[80,260],[80,430],[300,160],[300,330],[300,500],[600,160],[600,330],[600,500],[900,160],[900,330],[900,500],[1080,430]]},
+    {name:"Twin Rivers",desc:"Two parallel lanes and crossings.",path:[{x:-30,y:120},{300,y:120},{300,y:300},{850,y:300},{850,y:120},{1182,y:120}],spots:[[120,220],[120,390],[450,200],[450,400],[650,200],[650,400],[950,220],[950,390],[1080,220],[1080,390]]},
+    {name:"The Gauntlet",desc:"A dense maze of narrow lanes.",path:[{x:-30,y:70},{140,y:70},{140,y:540},{350,y:540},{350,y:110},{560,y:110},{560,y:540},{770,y:540},{770,y:110},{1182,y:110}],spots:[[70,300],[230,180],[230,400],[450,300],[450,450],[650,220],[650,400],[860,300],[950,220],[950,400],[1080,220],[1080,400]]}
   ];
-  const buildSpots = [
-    [90,190],[90,310],[245,175],[275,300],[350,170],[350,330],
-    [505,175],[550,300],[590,430],[720,210],[720,410],[815,255],
-    [815,430],[1000,265],[1010,410],[1080,270],[1080,410]
-  ];
+  let currentMap=0;
+  let path=MAPS[0].path;
+  let buildSpots=MAPS[0].spots;
 
   const TYPES = {
     dart:{name:"Dart",cost:60,range:145,damage:18,rate:.34,projectile:520,color:"#67e8f9",desc:"Fast precision fire"},
@@ -38,7 +39,8 @@
     bunker:{name:"Bunker",cost:220,range:105,damage:48,rate:.7,projectile:430,splash:20,color:"#64748b",desc:"Short-range powerhouse"},
     chrono:{name:"Chrono",cost:260,range:175,damage:24,rate:1.4,projectile:500,slow:.35,slowTime:2.8,color:"#f0abfc",desc:"Severe slow"},
     gravity:{name:"Gravity",cost:280,range:145,damage:18,rate:1.7,projectile:360,splash:68,slow:.48,slowTime:2,color:"#7c3aed",desc:"Group control"},
-    meteor:{name:"Meteor",cost:350,range:330,damage:145,rate:3.8,projectile:240,splash:105,color:"#ef4444",desc:"Endgame artillery"}
+    meteor:{name:"Meteor",cost:350,range:330,damage:145,rate:3.8,projectile:240,splash:105,color:"#ef4444",desc:"Endgame artillery"},
+    bank:{name:"Gold Mine",cost:180,range:0,damage:0,rate:5,projectile:0,income:22,color:"#fbbf24",desc:"Passively generates gold"}
   };
   const ENEMY = {
     grunt:{hp:75,speed:56,reward:8,r:11,color:"#ef4444"},
@@ -58,6 +60,14 @@
   }
   reset();
 
+  function selectMap(index){
+    currentMap=Math.max(0,Math.min(MAPS.length-1,index));
+    path=MAPS[currentMap].path;
+    buildSpots=MAPS[currentMap].spots;
+    reset();
+    document.querySelectorAll(".map-card").forEach((b,i)=>b.classList.toggle("selected",i===currentMap));
+  }
+
   function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
   function lerp(a,b,t){return a+(b-a)*t;}
   function pointOnPath(distance){
@@ -69,7 +79,7 @@
     }
     return {...path[path.length-1]};
   }
-  const pathLength=path.slice(1).reduce((s,p,i)=>s+dist(path[i],p),0);
+  function getPathLength(){return path.slice(1).reduce((s,p,i)=>s+dist(path[i],p),0);}
 
   function wavePlan(n){
     const total=8+Math.floor(n*2.3)+(n%5===0?1:0);
@@ -94,7 +104,7 @@
   }
   function startWave(){
     if(!state.started||state.gameOver||state.won||state.waveActive)return;
-    if(state.wave>=30){win();return;}
+    if(state.wave>=100){win();return;}
     state.wave++;
     const p=wavePlan(state.wave);
     state.waveActive=true;state.spawnLeft=p.total;state.spawnTotal=p.total;state.spawnTimer=0;
@@ -189,7 +199,7 @@
     for(const e of state.enemies){
       if(e.dead)continue;
       if(e.slowUntil<=state.time)e.slow=1;
-      e.distance+=e.speed*e.slow*dt;e.progress=e.distance/pathLength;
+      e.distance+=e.speed*e.slow*dt;e.progress=e.distance/getPathLength();
       const pos=pointOnPath(e.distance);e.x=pos.x;e.y=pos.y;
       if(e.distance>=getPathLength()){
         e.dead=true;state.lives--;state.shake=8;burst(e.x,e.y,"#ef4444",18);floatText(e.x,e.y,"-1 LIFE");
@@ -199,7 +209,19 @@
 
     for(const t of state.towers){
       t.cooldown=Math.max(0,t.cooldown-dt);
-      if(t.cooldown<=0){const target=nearestTarget(t);if(target)shoot(t,target);}
+      const def=TYPES[t.type];
+      if(def.income){
+        if(t.cooldown<=0){
+          const amount=Math.floor(def.income*(1+(t.level-1)*.25));
+          state.gold+=amount;
+          t.cooldown=def.rate*Math.pow(.94,t.level-1);
+          floatText(t.x,t.y-24,"+$"+amount);
+          burst(t.x,t.y,def.color,5);
+        }
+      }else if(t.cooldown<=0){
+        const target=nearestTarget(t);
+        if(target)shoot(t,target);
+      }
     }
 
     for(const s of state.shots){
@@ -240,9 +262,10 @@
     ctx.strokeStyle="#27364b";ctx.lineWidth=68;ctx.stroke();
     ctx.strokeStyle="#34455c";ctx.lineWidth=4;ctx.stroke();
     // start / base
-    ctx.fillStyle="#22c55e";ctx.beginPath();ctx.arc(18,110,13,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(1135,175,16,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="#fff";ctx.font="700 10px system-ui";ctx.textAlign="center";ctx.fillText("IN",18,114);ctx.fillText("BASE",1135,179);
+    const start=path[0],end=path[path.length-1];
+    ctx.fillStyle="#22c55e";ctx.beginPath();ctx.arc(start.x+30,start.y,13,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(end.x-30,end.y,16,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#fff";ctx.font="700 10px system-ui";ctx.textAlign="center";ctx.fillText("IN",start.x+30,start.y+4);ctx.fillText("BASE",end.x-30,end.y+4);
   }
   function drawBuildSpots(){
     for(const [x,y] of buildSpots){
@@ -316,7 +339,7 @@
     state.autoWave=!state.autoWave;
     document.getElementById("autoWaveButton").textContent=state.autoWave?"AUTO WAVES: ON":"AUTO WAVES: OFF";
     document.getElementById("autoWaveButton").classList.toggle("active",state.autoWave);
-    if(state.autoWave&&!state.waveActive&&state.started&&state.wave<30)state.betweenTimer=.5;
+    if(state.autoWave&&!state.waveActive&&state.started&&state.wave<100)state.betweenTimer=.5;
   };
   window.addEventListener("keydown",e=>{
     if(e.key==="1")selectBuild("dart");if(e.key==="2")selectBuild("cannon");if(e.key==="3")selectBuild("frost");
