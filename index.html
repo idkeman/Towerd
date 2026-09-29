@@ -26,8 +26,19 @@
       <div class="panel hero-panel">
         <div class="eyebrow">DEFENSE PROTOCOL</div>
         <h1>Hold the line.</h1>
-        <p>Build a defense, manipulate enemy speed, and survive an escalating campaign of 30 waves.</p>
-        <button id="startButton" class="primary">BEGIN DEFENSE</button>
+        <p>Build a defense, manipulate enemy speed, and survive an escalating campaign of 100 waves.</p>
+        <div class="map-picker">
+          <div class="map-picker-title"><span>MAP</span><b id="mapName">Crossroads</b></div>
+          <div id="mapMenu">
+            <button type="button" class="map-card selected" data-map="0"><b>Crossroads</b><small>Original winding route</small></button>
+            <button type="button" class="map-card" data-map="1"><b>Switchback</b><small>Long zig-zag route</small></button>
+            <button type="button" class="map-card" data-map="2"><b>Spiral</b><small>Coiling center route</small></button>
+            <button type="button" class="map-card" data-map="3"><b>Four Corners</b><small>Long sweeping lanes</small></button>
+            <button type="button" class="map-card" data-map="4"><b>Twin Rivers</b><small>Parallel lanes</small></button>
+            <button type="button" class="map-card" data-map="5"><b>The Gauntlet</b><small>Dense narrow lanes</small></button>
+          </div>
+        </div>
+        <button type="button" id="startButton" class="primary" onclick="window.towerdStart && window.towerdStart()">BEGIN DEFENSE</button>
         <div class="controls"><span><kbd>1</kbd> Dart</span><span><kbd>2</kbd> Cannon</span><span><kbd>3</kbd> Frost</span><span><kbd>Space</kbd> Start wave</span></div>
       </div>
     </div>
@@ -56,6 +67,7 @@
       <button class="tower-card" data-tower="chrono"><span class="tower-icon"></span><span><b>Chrono</b><small>Severe slow</small></span><strong>$260</strong></button>
       <button class="tower-card" data-tower="gravity"><span class="tower-icon"></span><span><b>Gravity</b><small>Group control</small></span><strong>$280</strong></button>
       <button class="tower-card" data-tower="meteor"><span class="tower-icon"></span><span><b>Meteor</b><small>Endgame artillery</small></span><strong>$350</strong></button>
+      <button class="tower-card" data-tower="bank"><span class="tower-icon"></span><span><b>Gold Mine</b><small>Passively generates gold</small></span><strong>$180</strong></button>
     </div>
     <div class="divider"></div>
     <div class="section-title">SELECTED TOWER</div>
