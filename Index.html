@@ -1,1 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Towerd - a browser tower defense game">
+  <title>Towerd</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app">
+    <header class="topbar">
+      <div>
+        <div class="logo">TOWERD</div>
+        <div class="subtitle">Build. Upgrade. Survive.</div>
+      </div>
+      <div class="stats">
+        <div class="stat"><span>WAVE</span><b id="waveValue">0</b></div>
+        <div class="stat"><span>GOLD</span><b id="goldValue">250</b></div>
+        <div class="stat"><span>LIVES</span><b id="livesValue">20</b></div>
+      </div>
+    </header>
 
+    <section class="game-shell">
+      <div class="canvas-wrap">
+        <canvas id="gameCanvas" width="1152" height="648"></canvas>
+        <div id="message" class="message hidden"></div>
+        <div id="startOverlay" class="overlay">
+          <div class="panel hero-panel">
+            <div class="eyebrow">DEFENSE PROTOCOL</div>
+            <h1>Hold the line.</h1>
+            <p>Place towers beside the road, survive increasingly dangerous waves, and spend your gold wisely.</p>
+            <button id="startButton" class="primary">BEGIN DEFENSE</button>
+            <div class="controls">
+              <span><kbd>1</kbd> Dart</span>
+              <span><kbd>2</kbd> Cannon</span>
+              <span><kbd>3</kbd> Frost</span>
+              <span><kbd>Space</kbd> Start wave</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <aside class="sidebar">
+        <div class="section-title">BUILD MENU</div>
+        <button class="tower-card selected" data-tower="dart">
+          <span class="tower-icon dart-icon"></span>
+          <span><b>Dart Tower</b><small>Fast single-target fire</small></span>
+          <strong>$60</strong>
+        </button>
+        <button class="tower-card" data-tower="cannon">
+          <span class="tower-icon cannon-icon"></span>
+          <span><b>Cannon</b><small>Slow splash damage</small></span>
+          <strong>$120</strong>
+        </button>
+        <button class="tower-card" data-tower="frost">
+          <span class="tower-icon frost-icon"></span>
+          <span><b>Frost Tower</b><small>Slows enemies in range</small></span>
+          <strong>$100</strong>
+        </button>
+
+        <div class="divider"></div>
+        <div class="section-title">SELECTED TOWER</div>
+        <div id="towerInfo" class="tower-info">
+          <b>No tower selected</b>
+          <span>Click a tower to inspect it.</span>
+        </div>
+        <button id="upgradeButton" class="secondary" disabled>UPGRADE <span id="upgradeCost">$—</span></button>
+        <button id="sellButton" class="danger" disabled>SELL <span id="sellValue">$—</span></button>
+
+        <div class="divider"></div>
+        <div class="wave-controls">
+          <button id="waveButton" class="primary compact">START WAVE</button>
+          <button id="speedButton" class="secondary compact">1× SPEED</button>
+        </div>
+        <div class="wave-progress"><div id="waveProgressBar"></div></div>
+        <div class="tip">Tip: towers can cover both sides of the road. Upgrade a few strong towers instead of scattering weak ones everywhere.</div>
+      </aside>
+    </section>
+
+    <footer>
+      <span>TOWERD v1.0</span>
+      <span>Mouse: build/select • R: restart after defeat</span>
+    </footer>
+  </main>
+  <script src="game.js"></script>
+</body>
+</html>
