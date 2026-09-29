@@ -32,6 +32,9 @@ button { font: inherit; color: inherit; }
 canvas { display:block; width:100%; height:auto; aspect-ratio:16/9; cursor:crosshair; }
 .sidebar { background:rgba(17,23,34,.94); border:1px solid var(--line); border-radius:14px; padding:16px; }
 .section-title { color:var(--muted); font-size:10px; font-weight:800; letter-spacing:.16em; margin:2px 0 10px; }
+#towerMenu { max-height:430px; overflow-y:auto; padding-right:4px; }
+#towerMenu::-webkit-scrollbar { width:6px; }
+#towerMenu::-webkit-scrollbar-thumb { background:#344157; border-radius:8px; }
 .tower-card { width:100%; display:grid; grid-template-columns:40px 1fr auto; align-items:center; gap:10px; text-align:left; background:var(--panel-2); border:1px solid transparent; border-radius:10px; padding:10px; margin-bottom:8px; cursor:pointer; transition:.15s; }
 .tower-card:hover,.tower-card.selected { border-color:#4b607b; background:#1b2637; transform:translateY(-1px); }
 .tower-card b,.tower-card small { display:block; }
@@ -56,6 +59,8 @@ button { border:0; }
 .danger { background:#2b1c25; color:#ff9aaa; border:1px solid #4a2935; margin-top:8px; }
 button:disabled { opacity:.38; cursor:not-allowed; }
 .compact { padding:9px; }
+.auto-wave { margin-top:7px; }
+.auto-wave.active { border-color:var(--accent); color:var(--accent); background:#172b25; }
 .wave-controls { display:grid; grid-template-columns:1fr 92px; gap:7px; }
 .wave-progress { height:5px; background:#202938; border-radius:10px; margin-top:10px; overflow:hidden; }
 .wave-progress div { width:0; height:100%; background:var(--accent); transition:width .1s linear; }
