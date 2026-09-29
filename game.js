@@ -98,6 +98,7 @@
   }
 
   function startGame(){
+    if(state.started&&!state.gameOver&&!state.won)return;
     state.started=true;state.gameOver=false;state.won=false;
     document.getElementById("startOverlay").classList.add("hidden");
     startWave();
@@ -131,7 +132,6 @@
     if(x<28||y<28||x>W-28||y>H-28)return false;
     if(buildSpots.every(([bx,by])=>Math.hypot(x-bx,y-by)>45))return false;
     if(state.towers.some(t=>Math.hypot(x-t.x,y-t.y)<42))return false;
-    // Keep tower centers away from the road.
     for(let i=0;i<path.length-1;i++){
       const a=path[i],b=path[i+1];
       const dx=b.x-a.x,dy=b.y-a.y,den=dx*dx+dy*dy;
@@ -153,6 +153,7 @@
   }
   function shoot(t,target){
     const def=TYPES[t.type];
+    if(!def.damage)return;
     t.cooldown=def.rate*Math.pow(0.94,t.level-1);
     state.shots.push({x:t.x,y:t.y,target,tx:target.x,ty:target.y,speed:def.projectile,
       damage:def.damage*(1+(t.level-1)*0.25),tower:t,type:t.type,color:def.color,splash:def.splash||0,slow:def.slow||1,slowTime:def.slowTime||0});
@@ -168,7 +169,7 @@
       for(const other of state.enemies){
         if(other!==e&&!other.dead&&Math.hypot(other.x-e.x,other.y-e.y)<=s.splash){
           other.hp-=Math.floor(s.damage*.42);
-          if(other.hp<=0) killEnemy(other,null);
+          if(other.hp<=0)killEnemy(other,null);
         }
       }
       burst(e.x,e.y,s.color,14);state.shake=Math.max(state.shake,4);
@@ -187,7 +188,10 @@
   function update(dt){
     if(!state.started||state.gameOver||state.won)return;
     dt*=state.speed;state.time+=dt;
-    if(state.betweenTimer>0){state.betweenTimer-=dt;if(state.betweenTimer<=0&&state.autoWave&&!state.waveActive&&!state.gameOver&&!state.won)startWave();}
+    if(state.betweenTimer>0){
+      state.betweenTimer-=dt;
+      if(state.betweenTimer<=0&&state.autoWave&&!state.waveActive&&!state.gameOver&&!state.won)startWave();
+    }
     if(state.shake>0)state.shake=Math.max(0,state.shake-dt*15);
 
     if(state.waveActive){
@@ -252,7 +256,6 @@
   }
   function drawMap(){
     ctx.fillStyle="#09111d";ctx.fillRect(0,0,W,H);
-    // subtle grid
     ctx.strokeStyle="rgba(148,163,184,.055)";ctx.lineWidth=1;
     for(let x=0;x<W;x+=36){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
     for(let y=0;y<H;y+=36){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
@@ -261,7 +264,6 @@
     ctx.strokeStyle="#172437";ctx.lineWidth=76;ctx.stroke();
     ctx.strokeStyle="#27364b";ctx.lineWidth=68;ctx.stroke();
     ctx.strokeStyle="#34455c";ctx.lineWidth=4;ctx.stroke();
-    // start / base
     const start=path[0],end=path[path.length-1];
     ctx.fillStyle="#22c55e";ctx.beginPath();ctx.arc(start.x+30,start.y,13,0,Math.PI*2);ctx.fill();
     ctx.fillStyle="#ef4444";ctx.beginPath();ctx.arc(end.x-30,end.y,16,0,Math.PI*2);ctx.fill();
@@ -326,11 +328,14 @@
 
   document.querySelectorAll(".map-card").forEach(btn=>btn.addEventListener("click",()=>{
     selectMap(Number(btn.dataset.map));
+    const label=document.getElementById("mapName");
+    if(label)label.textContent=MAPS[currentMap].name;
   }));
   document.querySelectorAll(".tower-card").forEach(btn=>btn.addEventListener("click",()=>{
     state.selectedBuild=btn.dataset.tower;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;updateUI();
   }));
-  document.getElementById("startButton").onclick=startGame;
+  window.towerdStart=startGame;
+  document.getElementById("startButton").addEventListener("click",startGame);
   document.getElementById("waveButton").onclick=()=>state.started&&!state.waveActive?startWave():null;
   document.getElementById("upgradeButton").onclick=upgrade;
   document.getElementById("sellButton").onclick=sell;
@@ -384,7 +389,7 @@
     document.getElementById("resultButton").onclick=()=>{reset();startGame();};
   }
   function lose(){state.gameOver=true;state.waveActive=false;overlayResult("Defense breached.","Your base was overrun on wave "+state.wave+". Rebuild your defense and try again.","RESTART");}
-  function win(){state.won=true;state.waveActive=false;overlayResult("You held the line.","Thirty waves defeated. The base is secure.","PLAY AGAIN");}
+  function win(){state.won=true;state.waveActive=false;overlayResult("You held the line.","One hundred waves defeated. The base is secure.","PLAY AGAIN");}
 
   let last=performance.now();
   function frame(now){const raw=Math.min(.05,(now-last)/1000);last=now;if(toastTimer>0){toastTimer-=raw;if(toastTimer<=0)document.getElementById("message").classList.add("hidden");}update(raw);draw();requestAnimationFrame(frame);}
