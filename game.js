@@ -301,6 +301,9 @@
   });
   canvas.addEventListener("mousemove",e=>{const p=canvasPos(e);canvas.style.cursor=state.towers.some(t=>Math.hypot(t.x-p.x,t.y-p.y)<24)?"pointer":"crosshair";});
 
+  document.querySelectorAll(".map-card").forEach(btn=>btn.addEventListener("click",()=>{
+    selectMap(Number(btn.dataset.map));
+  }));
   document.querySelectorAll(".tower-card").forEach(btn=>btn.addEventListener("click",()=>{
     state.selectedBuild=btn.dataset.tower;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;updateUI();
   }));
