@@ -26,7 +26,8 @@
     grunt:{hp:75,speed:56,reward:8,r:11,color:"#ef4444"},
     runner:{hp:48,speed:105,reward:10,r:9,color:"#f59e0b"},
     tank:{hp:280,speed:30,reward:25,r:16,color:"#a855f7"},
-    shield:{hp:145,speed:46,reward:16,r:13,color:"#38bdf8"}
+    shield:{hp:145,speed:46,reward:16,r:13,color:"#38bdf8"},
+    boss:{hp:1800,speed:24,reward:140,r:25,color:"#f43f5e"}
   };
 
   let state;
@@ -53,7 +54,7 @@
   const pathLength=path.slice(1).reduce((s,p,i)=>s+dist(path[i],p),0);
 
   function wavePlan(n){
-    const total=8+Math.floor(n*2.3);
+    const total=8+Math.floor(n*2.3)+(n%5===0?1:0);
     const pool=["grunt","grunt","grunt","runner"];
     if(n>=3) pool.push("shield");
     if(n>=5) pool.push("tank");
@@ -61,6 +62,7 @@
   }
   function chooseEnemy(n){
     const plan=wavePlan(n), roll=Math.random();
+    if(n%5===0 && state.spawnLeft===state.spawnTotal)return"boss";
     if(n>=8 && roll<.11)return"tank";
     if(n>=3 && roll<.27)return"shield";
     if(roll<.48)return"runner";
@@ -249,6 +251,7 @@
       ctx.fillStyle=d.color;ctx.beginPath();ctx.arc(e.x,e.y,d.r,0,Math.PI*2);ctx.fill();
       if(e.type==="tank"){ctx.strokeStyle="#e9d5ff";ctx.lineWidth=2;ctx.stroke();}
       if(e.type==="shield"){ctx.strokeStyle="#e0f2fe";ctx.lineWidth=3;ctx.stroke();}
+      if(e.type==="boss"){ctx.strokeStyle="#fecdd3";ctx.lineWidth=4;ctx.stroke();ctx.fillStyle="#fff";ctx.font="700 9px system-ui";ctx.textAlign="center";ctx.fillText("BOSS",e.x,e.y+3);}
       const barW=d.r*2.5;
       ctx.fillStyle="rgba(0,0,0,.5)";ctx.fillRect(e.x-barW/2,e.y-d.r-9,barW,4);
       ctx.fillStyle=e.hp/e.maxHp>.5?"#4ade80":e.hp/e.maxHp>.25?"#facc15":"#f87171";
