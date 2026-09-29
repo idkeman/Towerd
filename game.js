@@ -113,18 +113,19 @@
 
   function nearestTarget(t){
     const def=TYPES[t.type];
+    const levelScale=1+(t.level-1)*0.05;
     let best=null,bestProgress=-1;
     for(const e of state.enemies){
-      if(e.dead||dist(t,e)>def.range)continue;
+      if(e.dead||dist(t,e)>def.range*levelScale)continue;
       if(e.progress>bestProgress){best=e;bestProgress=e.progress;}
     }
     return best;
   }
   function shoot(t,target){
     const def=TYPES[t.type];
-    t.cooldown=def.rate;
+    t.cooldown=def.rate*Math.pow(0.94,t.level-1);
     state.shots.push({x:t.x,y:t.y,target,tx:target.x,ty:target.y,speed:def.projectile,
-      damage:def.damage,type:t.type,color:def.color,splash:def.splash||0,slow:def.slow||1,slowTime:def.slowTime||0});
+      damage:def.damage*(1+(t.level-1)*0.25),tower:t,type:t.type,color:def.color,splash:def.splash||0,slow:def.slow||1,slowTime:def.slowTime||0});
     burst(t.x,t.y,def.color,2);
   }
 
@@ -289,7 +290,7 @@
     if(e.key==="1")selectBuild("dart");if(e.key==="2")selectBuild("cannon");if(e.key==="3")selectBuild("frost");
     if(e.code==="Space"){e.preventDefault();if(!state.started)startGame();else if(!state.waveActive)startWave();}
     if(e.key==="Escape"){state.selectedTower=null;updateUI();}
-    if(e.key.toLowerCase()==="r"&&state.gameOver)reset();
+    if(e.key.toLowerCase()==="r"&&state.gameOver){reset();startGame();}
   });
   function selectBuild(type){state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===type));}
   function upgrade(){
@@ -325,7 +326,7 @@
   function overlayResult(title,body,button){
     const o=document.getElementById("startOverlay");o.classList.remove("hidden");
     o.innerHTML='<div class="panel hero-panel"><div class="eyebrow">TOWERD</div><h1>'+title+'</h1><p>'+body+'</p><button id="resultButton" class="primary">'+button+'</button></div>';
-    document.getElementById("resultButton").onclick=reset;
+    document.getElementById("resultButton").onclick=()=>{reset();startGame();};
   }
   function lose(){state.gameOver=true;state.waveActive=false;overlayResult("Defense breached.","Your base was overrun on wave "+state.wave+". Rebuild your defense and try again.","RESTART");}
   function win(){state.won=true;state.waveActive=false;overlayResult("You held the line.","Thirty waves defeated. The base is secure.","PLAY AGAIN");}
