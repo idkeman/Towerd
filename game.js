@@ -18,9 +18,27 @@
   ];
 
   const TYPES = {
-    dart:{name:"Dart Tower",cost:60,range:145,damage:18,rate:0.34,projectile:520,color:"#67e8f9",desc:"Fast precision fire"},
+    dart:{name:"Dart",cost:60,range:145,damage:18,rate:.34,projectile:520,color:"#67e8f9",desc:"Fast precision fire"},
     cannon:{name:"Cannon",cost:120,range:125,damage:55,rate:1.35,projectile:350,splash:58,color:"#fb923c",desc:"Heavy splash damage"},
-    frost:{name:"Frost Tower",cost:100,range:135,damage:7,rate:0.8,projectile:430,slow:0.52,slowTime:1.8,color:"#a5b4fc",desc:"Damages and slows enemies"}
+    frost:{name:"Frost",cost:100,range:135,damage:7,rate:.8,projectile:430,slow:.52,slowTime:1.8,color:"#a5b4fc",desc:"Slows enemies"},
+    sniper:{name:"Sniper",cost:150,range:310,damage:105,rate:1.8,projectile:850,color:"#f8fafc",desc:"Extreme range and damage"},
+    machine:{name:"Machine Gun",cost:135,range:135,damage:11,rate:.11,projectile:680,color:"#94a3b8",desc:"Very rapid fire"},
+    flame:{name:"Flame",cost:165,range:105,damage:13,rate:.22,projectile:300,splash:38,color:"#fb7185",desc:"Close-range area damage"},
+    tesla:{name:"Tesla",cost:190,range:155,damage:34,rate:.82,projectile:900,color:"#c084fc",desc:"High-power electric shots"},
+    poison:{name:"Venom",cost:125,range:145,damage:24,rate:.7,projectile:430,color:"#a3e635",desc:"Reliable damage"},
+    missile:{name:"Missile",cost:210,range:220,damage:90,rate:2.2,projectile:260,splash:82,color:"#f97316",desc:"Huge explosive radius"},
+    railgun:{name:"Railgun",cost:275,range:360,damage:180,rate:3.2,projectile:1100,color:"#38bdf8",desc:"Long-range heavy hitter"},
+    mortar:{name:"Mortar",cost:185,range:285,damage:72,rate:2.4,projectile:300,splash:72,color:"#d97706",desc:"Long-range artillery"},
+    boomerang:{name:"Boomerang",cost:115,range:165,damage:28,rate:.75,projectile:460,splash:18,color:"#fbbf24",desc:"Cluster sweeper"},
+    laser:{name:"Laser",cost:240,range:235,damage:42,rate:.5,projectile:1000,color:"#f43f5e",desc:"Focused beam"},
+    plasma:{name:"Plasma",cost:260,range:190,damage:68,rate:1.05,projectile:620,splash:30,color:"#22d3ee",desc:"Energy blasts"},
+    crystal:{name:"Crystal",cost:200,range:175,damage:44,rate:1.1,projectile:520,splash:25,slow:.72,slowTime:1.2,color:"#e879f9",desc:"Slowing bursts"},
+    shockwave:{name:"Shockwave",cost:230,range:120,damage:30,rate:1.6,projectile:360,slow:.4,slowTime:1.2,color:"#60a5fa",desc:"Disrupts movement"},
+    drone:{name:"Drone",cost:195,range:205,damage:26,rate:.42,projectile:580,color:"#818cf8",desc:"Fast autonomous fire"},
+    bunker:{name:"Bunker",cost:220,range:105,damage:48,rate:.7,projectile:430,splash:20,color:"#64748b",desc:"Short-range powerhouse"},
+    chrono:{name:"Chrono",cost:260,range:175,damage:24,rate:1.4,projectile:500,slow:.35,slowTime:2.8,color:"#f0abfc",desc:"Severe slow"},
+    gravity:{name:"Gravity",cost:280,range:145,damage:18,rate:1.7,projectile:360,splash:68,slow:.48,slowTime:2,color:"#7c3aed",desc:"Group control"},
+    meteor:{name:"Meteor",cost:350,range:330,damage:145,rate:3.8,projectile:240,splash:105,color:"#ef4444",desc:"Endgame artillery"}
   };
   const ENEMY = {
     grunt:{hp:75,speed:56,reward:8,r:11,color:"#ef4444"},
@@ -35,7 +53,7 @@
     state={started:false,gameOver:false,won:false,wave:0,gold:250,lives:20,
       towers:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
       selectedBuild:"dart",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
-      speed:1,betweenTimer:0,time:0,shake:0};
+      speed:1,autoWave:false,betweenTimer:0,time:0,shake:0};
     updateUI();
   }
   reset();
@@ -159,6 +177,7 @@
   function update(dt){
     if(!state.started||state.gameOver||state.won)return;
     dt*=state.speed;state.time+=dt;
+    if(state.betweenTimer>0){state.betweenTimer-=dt;if(state.betweenTimer<=0&&state.autoWave&&!state.waveActive&&!state.gameOver&&!state.won)startWave();}
     if(state.shake>0)state.shake=Math.max(0,state.shake-dt*15);
 
     if(state.waveActive){
@@ -199,6 +218,7 @@
       const bonus=25+state.wave*3;state.gold+=bonus;
       toast("WAVE CLEAR  +$"+bonus);
       if(state.wave>=30)win();
+      else if(state.autoWave)state.betweenTimer=1.5;
     }
     updateUI();
   }
@@ -289,6 +309,12 @@
   document.getElementById("upgradeButton").onclick=upgrade;
   document.getElementById("sellButton").onclick=sell;
   document.getElementById("speedButton").onclick=()=>{state.speed=state.speed===1?2:state.speed===2?3:1;document.getElementById("speedButton").textContent=state.speed+"× SPEED";};
+  document.getElementById("autoWaveButton").onclick=()=>{
+    state.autoWave=!state.autoWave;
+    document.getElementById("autoWaveButton").textContent=state.autoWave?"AUTO WAVES: ON":"AUTO WAVES: OFF";
+    document.getElementById("autoWaveButton").classList.toggle("active",state.autoWave);
+    if(state.autoWave&&!state.waveActive&&state.started&&state.wave<30)state.betweenTimer=.5;
+  };
   window.addEventListener("keydown",e=>{
     if(e.key==="1")selectBuild("dart");if(e.key==="2")selectBuild("cannon");if(e.key==="3")selectBuild("frost");
     if(e.code==="Space"){e.preventDefault();if(!state.started)startGame();else if(!state.waveActive)startWave();}
