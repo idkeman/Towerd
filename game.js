@@ -40,7 +40,8 @@
     chrono:{name:"Chrono",cost:325,range:175,damage:21,rate:1.51,projectile:500,slow:.42,slowTime:2.65,color:"#f0abfc",desc:"Severe slow"},
     gravity:{name:"Gravity",cost:350,range:145,damage:16,rate:1.84,projectile:360,splash:65,slow:.53,slowTime:1.9,color:"#7c3aed",desc:"Group control"},
     meteor:{name:"Meteor",cost:440,range:330,damage:130,rate:4.1,projectile:240,splash:100,color:"#ef4444",desc:"Endgame artillery"},
-    bank:{name:"Gold Mine",cost:225,range:0,damage:0,rate:5,projectile:0,income:20,color:"#fbbf24",desc:"Passively generates gold"}
+    bank:{name:"Gold Mine",cost:225,range:0,damage:0,rate:5,projectile:0,income:20,color:"#fbbf24",desc:"Passively generates gold"},
+    trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes that trigger on enemies"}
   };
   const ENEMY = {
     grunt:{hp:75,speed:56,reward:8,r:11,color:"#ef4444"},
@@ -51,14 +52,84 @@
   };
 
   const SAVE_KEY="towerd-save-v1";
+  const PROFILE_KEY="towerd-profile-v1";
   let state;
   let saveTimer=0;
+  let profile={level:1,xp:0,totalXp:0};
+  let offlineReport=null;
+
+  function xpNeeded(level){return 100+(level-1)*75;}
+  function profileOfflineCap(){return Math.min(12*60*60,(2+profile.level*.5)*60*60);}
+  function startingGold(){return 250+(profile.level-1)*10;}
+  function startingLives(){return 20+Math.floor((profile.level-1)/3);}
+  function loadProfile(){
+    try{
+      const raw=localStorage.getItem(PROFILE_KEY);
+      if(raw){
+        const p=JSON.parse(raw);
+        profile={level:Math.max(1,Number(p.level)||1),xp:Math.max(0,Number(p.xp)||0),totalXp:Math.max(0,Number(p.totalXp)||0)};
+      }
+    }catch(error){console.warn("Towerd profile load failed:",error);}
+  }
+  function saveProfile(){
+    try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));}catch(error){console.warn("Towerd profile save failed:",error);}
+  }
+  function addXP(amount){
+    amount=Math.max(0,Math.floor(amount||0));
+    if(!amount)return;
+    profile.xp+=amount;profile.totalXp+=amount;
+    let leveled=false;
+    while(profile.xp>=xpNeeded(profile.level)){
+      profile.xp-=xpNeeded(profile.level);
+      profile.level++;
+      leveled=true;
+    }
+    saveProfile();
+    updateProgressionUI();
+    if(leveled)toast("COMMAND RANK "+profile.level+"  +PERMANENT BONUS");
+  }
+  function updateProgressionUI(){
+    const level=document.getElementById("profileLevel");
+    const bar=document.getElementById("profileProgressBar");
+    const xp=document.getElementById("profileXp");
+    const perks=document.getElementById("profilePerks");
+    if(level)level.textContent=profile.level;
+    if(xp)xp.textContent=profile.xp+" / "+xpNeeded(profile.level)+" XP";
+    if(bar)bar.style.width=Math.min(100,profile.xp/xpNeeded(profile.level)*100)+"%";
+    if(perks)perks.textContent="+"+(profile.level-1)*10+" starting gold · +"+Math.floor((profile.level-1)/3)+" lives · "+Math.round((1+(profile.level-1)*.05)*100)+"% offline income";
+  }
+  function applyOfflineProgress(savedAt){
+    if(!savedAt)return;
+    const away=Math.max(0,Math.floor((Date.now()-Number(savedAt))/1000));
+    if(away<10)return;
+    const seconds=Math.min(away,profileOfflineCap());
+    const mineCount=state.towers.filter(t=>t.type==="bank").length;
+    const mineGold=state.towers.filter(t=>t.type==="bank").reduce((sum,t)=>{
+      const def=TYPES.bank;
+      const level=Math.max(1,Number(t.level)||1);
+      return sum+(seconds/def.rate)*def.income*(1+(level-1)*.25);
+    },0);
+    const passive=seconds/90;
+    const income=Math.floor((mineGold+passive)*(1+(profile.level-1)*.05));
+    const xp=Math.floor(seconds/30)+Math.floor(income/20);
+    let simulatedWaves=0;
+    if(state.autoWave&&!state.gameOver&&!state.won){
+      simulatedWaves=Math.min(Math.floor(seconds/45),Math.max(0,100-state.wave));
+      state.wave=Math.min(100,state.wave+simulatedWaves);
+      if(simulatedWaves)state.gold+=simulatedWaves*30;
+      if(state.wave>=100)state.won=true;
+    }
+    if(income>0)state.gold+=income;
+    addXP(xp);
+    offlineReport={seconds,income,xp,simulatedWaves,mineCount};
+  }
 
   function saveGame(showMessage=false){
     try{
       if(!state||!state.started)return false;
       const snapshot={
-        version:1,
+        version:2,
+        savedAt:Date.now(),
         map:currentMap,
         wave:state.wave,
         gold:state.gold,
@@ -78,6 +149,9 @@
         towers:state.towers.map(t=>({
           type:t.type,x:t.x,y:t.y,level:t.level,cooldown:t.cooldown,
           totalSpent:t.totalSpent,kills:t.kills,targetMode:t.targetMode||"furthest"
+        })),
+        traps:state.traps.filter(t=>!t.dead).map(t=>({
+          x:t.x,y:t.y,damage:t.damage,life:t.life,slow:t.slow,slowTime:t.slowTime,towerType:t.towerType
         })),
         enemies:state.enemies.filter(e=>!e.dead).map(e=>({
           type:e.type,x:e.x,y:e.y,distance:e.distance,hp:e.hp,maxHp:e.maxHp,
@@ -103,7 +177,7 @@
       const raw=localStorage.getItem(SAVE_KEY);
       if(!raw)return false;
       const save=JSON.parse(raw);
-      if(!save||save.version!==1)return false;
+      if(!save||!([1,2].includes(save.version)))return false;
 
       currentMap=Math.max(0,Math.min(MAPS.length-1,Number(save.map)||0));
       path=MAPS[currentMap].path;
@@ -116,6 +190,7 @@
         enemies:Array.isArray(save.enemies)?save.enemies:[],
         shots:[],particles:[],texts:[],selectedTower:null,
         selectedBuild:save.selectedBuild||"dart",
+        traps:Array.isArray(save.traps)?save.traps:[],
         waveActive:!!save.waveActive,spawnLeft:Number(save.spawnLeft)||0,
         spawnTimer:Number(save.spawnTimer)||0,spawnTotal:Number(save.spawnTotal)||0,
         speed:Number(save.speed)||1,autoWave:!!save.autoWave,
@@ -126,6 +201,10 @@
         type:t.type,x:Number(t.x),y:Number(t.y),level:Math.max(1,Math.min(5,Number(t.level)||1)),
         cooldown:Number(t.cooldown)||0,totalSpent:Number(t.totalSpent)||TYPES[t.type].cost,
         kills:Number(t.kills)||0,targetMode:t.targetMode||"furthest"
+      }));
+      state.traps=state.traps.filter(t=>Number.isFinite(Number(t.x))&&Number.isFinite(Number(t.y))).map(t=>({
+        x:Number(t.x),y:Number(t.y),damage:Number(t.damage)||TYPES.trap.damage,life:Number(t.life)||TYPES.trap.trapLife,
+        slow:Number(t.slow)||TYPES.trap.slow,slowTime:Number(t.slowTime)||TYPES.trap.slowTime,towerType:t.towerType||"trap",dead:false
       }));
       state.enemies=state.enemies.filter(e=>ENEMY[e.type]).map(e=>({
         type:e.type,x:Number(e.x),y:Number(e.y),distance:Number(e.distance)||0,
@@ -140,7 +219,14 @@
       document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===state.selectedBuild));
       const overlay=document.getElementById("startOverlay");
       if(overlay)overlay.classList.add("hidden");
+      applyOfflineProgress(save.savedAt);
       updateUI();
+      updateProgressionUI();
+      if(offlineReport){
+        const r=offlineReport;
+        toast("AWAY PROGRESS  +$"+r.income+"  +"+r.xp+" XP"+(r.simulatedWaves?"  +"+r.simulatedWaves+" WAVES":""));
+        offlineReport=null;
+      }
       if(showMessage)toast("GAME LOADED");
       return true;
     }catch(error){
@@ -166,8 +252,8 @@
   }
 
   function reset(){
-    state={started:false,gameOver:false,won:false,wave:0,gold:250,lives:20,
-      towers:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
+    state={started:false,gameOver:false,won:false,wave:0,gold:startingGold(),lives:startingLives(),
+      towers:[],traps:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
       selectedBuild:"dart",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
       speed:1,autoWave:false,betweenTimer:0,time:0,shake:0};
     updateUI();
@@ -279,9 +365,51 @@
     }
     return best;
   }
+  function nearestPathPoint(x,y){
+    let best=null,bestD=Infinity;
+    for(let i=0;i<path.length-1;i++){
+      const a=path[i],b=path[i+1],dx=b.x-a.x,dy=b.y-a.y,den=dx*dx+dy*dy;
+      const q=Math.max(0,Math.min(1,((x-a.x)*dx+(y-a.y)*dy)/den));
+      const p={x:a.x+q*dx,y:a.y+q*dy};
+      const d=Math.hypot(x-p.x,y-p.y);
+      if(d<bestD){bestD=d;best=p;}
+    }
+    return best;
+  }
+  function placeTrap(t){
+    const def=TYPES.trap;
+    const p=nearestPathPoint(t.x,t.y);
+    if(!p||Math.hypot(t.x-p.x,t.y-p.y)>def.range)return false;
+    if(state.traps.some(tr=>!tr.dead&&Math.hypot(tr.x-p.x,tr.y-p.y)<28))return false;
+    state.traps.push({x:p.x,y:p.y,damage:def.damage*(1+(t.level-1)*.25),life:def.trapLife*(1+(t.level-1)*.15),slow:def.slow,slowTime:def.slowTime,towerType:"trap",dead:false});
+    t.cooldown=def.rate*Math.pow(.94,t.level-1);
+    burst(p.x,p.y,def.color,7);
+    return true;
+  }
+  function updateTraps(dt){
+    for(const trap of state.traps){
+      if(trap.dead)continue;
+      trap.life-=dt;
+      if(trap.life<=0){trap.dead=true;continue;}
+      for(const e of state.enemies){
+        if(e.dead)continue;
+        if(Math.hypot(e.x-trap.x,e.y-trap.y)<22){
+          e.hp-=trap.damage;
+          e.slow=trap.slow;e.slowUntil=state.time+trap.slowTime;
+          trap.dead=true;
+          burst(trap.x,trap.y,TYPES.trap.color,16);
+          floatText(trap.x,trap.y-16,"SPIKE -"+Math.floor(trap.damage));
+          if(e.hp<=0)killEnemy(e,null);
+          break;
+        }
+      }
+    }
+    state.traps=state.traps.filter(t=>!t.dead);
+  }
+
   function shoot(t,target){
     const def=TYPES[t.type];
-    if(!def.damage)return;
+    if(!def.damage||t.type==="trap")return;
     t.cooldown=def.rate*Math.pow(0.94,t.level-1);
     state.shots.push({x:t.x,y:t.y,target,tx:target.x,ty:target.y,speed:def.projectile,
       damage:def.damage*(1+(t.level-1)*0.25),tower:t,type:t.type,color:def.color,splash:def.splash||0,slow:def.slow||1,slowTime:def.slowTime||0});
@@ -309,6 +437,7 @@
     if(e.dead)return;
     e.dead=true;state.gold+=ENEMY[e.type].reward;
     if(tower)tower.kills++;
+    addXP(Math.max(1,Math.floor(ENEMY[e.type].reward*.75)));
     burst(e.x,e.y,ENEMY[e.type].color,10);
     floatText(e.x,e.y-18,"+$"+ENEMY[e.type].reward);
   }
@@ -350,11 +479,14 @@
           floatText(t.x,t.y-24,"+$"+amount);
           burst(t.x,t.y,def.color,5);
         }
+      }else if(t.type==="trap"){
+        if(t.cooldown<=0)placeTrap(t);
       }else if(t.cooldown<=0){
         const target=nearestTarget(t);
         if(target)shoot(t,target);
       }
     }
+    updateTraps(dt);
 
     for(const s of state.shots){
       if(!s.target||s.target.dead){s.dead=true;continue;}
@@ -370,7 +502,8 @@
     if(state.waveActive&&state.spawnLeft===0&&state.enemies.length===0){
       state.waveActive=false;
       const bonus=25+state.wave*3;state.gold+=bonus;
-      toast("WAVE CLEAR  +$"+bonus);
+      addXP(20+state.wave*2);
+      toast("WAVE CLEAR  +$"+bonus+"  +"+(20+state.wave*2)+" XP");
       if(state.wave>=100)win();
       else if(state.autoWave)state.betweenTimer=1.5;
     }
@@ -380,7 +513,7 @@
   function draw(){
     ctx.save();
     if(state.shake>0)ctx.translate((Math.random()-.5)*state.shake,(Math.random()-.5)*state.shake);
-    drawMap();drawTowers();drawEnemies();drawShots();drawParticles();drawTexts();ctx.restore();
+    drawMap();drawTraps();drawTowers();drawEnemies();drawShots();drawParticles();drawTexts();ctx.restore();
   }
   function drawMap(){
     ctx.fillStyle="#09111d";ctx.fillRect(0,0,W,H);
@@ -408,7 +541,7 @@
   const TOWER_LOGOS={
     dart:"•",cannon:"◆",frost:"❄",sniper:"⌁",machine:"≡",flame:"♨",tesla:"ϟ",poison:"☠",
     missile:"▲",railgun:"╋",mortar:"●",boomerang:"◖",laser:"—",plasma:"✦",crystal:"◇",
-    shockwave:"◎",drone:"◆",bunker:"▣",chrono:"◷",gravity:"◉",meteor:"☄",bank:"$"
+    shockwave:"◎",drone:"◆",bunker:"▣",chrono:"◷",gravity:"◉",meteor:"☄",bank:"$",trap:"✹"
   };
 
   function drawTowerLogo(t,d){
@@ -439,6 +572,23 @@
     ctx.restore();
   }
 
+  function drawTraps(){
+    for(const tr of state.traps){
+      const alpha=Math.max(.18,Math.min(1,tr.life/(TYPES.trap.trapLife*1.5)));
+      ctx.save();
+      ctx.globalAlpha=alpha;
+      ctx.translate(tr.x,tr.y);
+      ctx.strokeStyle=TYPES.trap.color;
+      ctx.fillStyle="#18212e";
+      ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();ctx.stroke();
+      for(let i=0;i<8;i++){
+        const a=i*Math.PI/4;
+        ctx.beginPath();ctx.moveTo(Math.cos(a)*5,Math.sin(a)*5);ctx.lineTo(Math.cos(a)*13,Math.sin(a)*13);ctx.stroke();
+      }
+      ctx.restore();
+    }
+  }
   function drawTowers(){
     for(const t of state.towers){
       const d=TYPES[t.type],selected=t===state.selectedTower;
@@ -565,6 +715,7 @@
     }
     const progress=state.spawnTotal?Math.min(1,1-(state.spawnLeft/state.spawnTotal)):(state.waveActive?0:1);
     document.getElementById("waveProgressBar").style.width=(progress*100)+"%";
+    updateProgressionUI();
     const wb=document.getElementById("waveButton");wb.textContent=state.waveActive?"WAVE IN PROGRESS":state.wave>=100?"COMPLETE":"START WAVE";wb.disabled=state.waveActive||state.wave>=100;
   }
 
@@ -588,5 +739,6 @@
       if(state.started&&!state.gameOver&&!state.won)saveGame(false);
     }
     if(toastTimer>0){toastTimer-=raw;if(toastTimer<=0)document.getElementById("message").classList.add("hidden");}update(raw);draw();requestAnimationFrame(frame);}
+  window.addEventListener("pagehide",()=>{if(state&&state.started&&!state.gameOver&&!state.won)saveGame(false);});
   requestAnimationFrame(frame);
 })();
