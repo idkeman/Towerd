@@ -330,6 +330,10 @@ const UNLOCKS={
     updateUI();
     updateSaveButtons();
   }
+  loadProfile();
+  updateProgressionUI();
+  updateTowerLocks();
+
   reset();
 
   function selectMap(index){
