@@ -74,6 +74,25 @@ const UNLOCKS={
   vortex:{cost:230,level:12},siege:{cost:260,level:13},swarm:{cost:300,level:14},sun:{cost:350,level:15},void:{cost:400,level:16},
   titan:{cost:450,level:17},prism:{cost:500,level:18},plague:{cost:550,level:19},overdrive:{cost:625,level:20},doomsday:{cost:750,level:25}
 };
+  const DIFFICULTIES = {
+    easy:{name:"Easy",hp:1,speed:1,count:1,reward:1,lives:20,bossEvery:5,elite:0,waveGold:1,description:"The current ruleset. A forgiving 100-wave campaign."},
+    normal:{name:"Normal",hp:2,speed:1.12,count:1.10,reward:.94,lives:20,bossEvery:5,elite:.18,waveGold:.94,description:"2× enemy health, faster enemies, and 10% more bodies."},
+    hard:{name:"Hard",hp:4,speed:1.28,count:1.22,reward:.88,lives:18,bossEvery:4,elite:.32,waveGold:.88,description:"4× enemy health, 28% more speed, and 22% more enemies."},
+    extreme:{name:"Extreme",hp:8,speed:1.48,count:1.38,reward:.80,lives:16,bossEvery:3,elite:.48,waveGold:.80,description:"8× enemy health, brutal speed, dense waves, heavier elites."},
+    impossible:{name:"Impossible",hp:16,speed:1.72,count:1.55,reward:.68,lives:12,bossEvery:2,elite:.65,waveGold:.68,description:"16× enemy health, extreme speed, and 55% more enemies."}
+  };
+  const DIFFICULTY_KEY="towerd-difficulty-v1";
+  function difficultyDef(){
+    const key=state&&state.difficulty?state.difficulty:(document.getElementById("difficultySelect")?.value||localStorage.getItem(DIFFICULTY_KEY)||"easy");
+    return DIFFICULTIES[key]||DIFFICULTIES.easy;
+  }
+  function updateDifficultyUI(){
+    const select=document.getElementById("difficultySelect"),note=document.getElementById("difficultyNote");
+    if(!select)return;
+    const d=DIFFICULTIES[select.value]||DIFFICULTIES.easy;
+    if(note)note.textContent=d.description+"  •  HP ×"+d.hp+"  •  speed ×"+d.speed.toFixed(2)+"  •  enemies ×"+d.count.toFixed(2);
+  }
+
   const ENEMY = {
     grunt:{hp:75,speed:56,reward:8,r:11,color:"#ef4444"},
     runner:{hp:48,speed:105,reward:10,r:9,color:"#f59e0b"},
@@ -92,7 +111,7 @@ const UNLOCKS={
   function xpNeeded(level){return 100+(level-1)*75;}
   function profileOfflineCap(){return Math.min(12*60*60,(2+profile.level*.5)*60*60);}
   function startingGold(){return 250+(profile.level-1)*10;}
-  function startingLives(){return 20+Math.floor((profile.level-1)/3);}
+  function startingLives(){return Math.max(1,Math.floor((20+Math.floor((profile.level-1)/3))*difficultyDef().lives/20));}
   function loadProfile(){
     try{
       const raw=localStorage.getItem(PROFILE_KEY);
@@ -196,7 +215,7 @@ const UNLOCKS={
         speed:state.speed,
         autoWave:state.autoWave,
         betweenTimer:state.betweenTimer,
-        time:state.time,
+        time:state.time,difficulty:state.difficulty||"easy",
         selectedBuild:state.selectedBuild,
         towers:state.towers.map(t=>({
           type:t.type,x:t.x,y:t.y,level:t.level,cooldown:t.cooldown,
@@ -245,7 +264,7 @@ const UNLOCKS={
         traps:Array.isArray(save.traps)?save.traps:[],
         waveActive:!!save.waveActive,spawnLeft:Number(save.spawnLeft)||0,
         spawnTimer:Number(save.spawnTimer)||0,spawnTotal:Number(save.spawnTotal)||0,
-        speed:Number(save.speed)||1,autoWave:!!save.autoWave,
+        speed:Number(save.speed)||1,autoWave:!!save.autoWave,difficulty:save.difficulty||localStorage.getItem(DIFFICULTY_KEY)||"easy",
         betweenTimer:Number(save.betweenTimer)||0,time:Number(save.time)||0,shake:0
       };
 
@@ -306,7 +325,7 @@ const UNLOCKS={
   function reset(){
     state={started:false,gameOver:false,won:false,wave:0,gold:startingGold(),lives:startingLives(),
       towers:[],traps:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
-      selectedBuild:"dart",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
+      selectedBuild:"dart",difficulty:localStorage.getItem(DIFFICULTY_KEY)||"easy",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
       speed:1,autoWave:false,betweenTimer:0,time:0,shake:0};
     updateUI();
     updateSaveButtons();
@@ -336,23 +355,26 @@ const UNLOCKS={
   function getPathLength(){return path.slice(1).reduce((s,p,i)=>s+dist(path[i],p),0);}
 
   function wavePlan(n){
-    const total=8+Math.floor(n*2.3)+(n%5===0?1:0);
+    const total=Math.max(1,Math.ceil((8+Math.floor(n*2.3)+(n%5===0?1:0))*difficultyDef().count));
     const pool=["grunt","grunt","grunt","runner"];
     if(n>=3) pool.push("shield");
     if(n>=5) pool.push("tank");
-    return {total,delay:Math.max(.24,.72-n*.012),pool};
+    return {total,delay:Math.max(.16,(.72-n*.012)/difficultyDef().speed),pool};
   }
   function chooseEnemy(n){
     const plan=wavePlan(n), roll=Math.random();
-    if(n%5===0 && state.spawnLeft===state.spawnTotal)return"boss";
-    if(n>=8 && roll<.11)return"tank";
-    if(n>=3 && roll<.27)return"shield";
-    if(roll<.48)return"runner";
+    const d=difficultyDef();
+    if(n%d.bossEvery===0 && state.spawnLeft===state.spawnTotal)return"boss";
+    if(n>=8 && roll<.11+d.elite*.16)return"tank";
+    if(n>=3 && roll<.27+d.elite*.22)return"shield";
+    if(roll<.48+d.elite*.18)return"runner";
     return"grunt";
   }
 
   function startGame(){
     if(state.started&&!state.gameOver&&!state.won)return;
+    state.difficulty=document.getElementById("difficultySelect")?.value||state.difficulty||localStorage.getItem(DIFFICULTY_KEY)||"easy";
+    localStorage.setItem(DIFFICULTY_KEY,state.difficulty);
     state.started=true;
     state.gameOver=false;
     state.won=false;
@@ -376,8 +398,11 @@ const UNLOCKS={
 
   function spawnEnemy(){
     const type=chooseEnemy(state.wave), e=ENEMY[type];
-    state.enemies.push({type,x:path[0].x,y:path[0].y,distance:0,hp:e.hp,maxHp:e.hp,
-      speed:e.speed*(1+Math.min(.55,state.wave*.012)),slow:1,slowUntil:0,dead:false,progress:0});
+    const d=difficultyDef();
+    const hp=Math.floor(e.hp*d.hp*(1+Math.min(2.5,state.wave*.018)));
+    const speed=e.speed*d.speed*(1+Math.min(.55,state.wave*.012));
+    state.enemies.push({type,x:path[0].x,y:path[0].y,distance:0,hp,maxHp:hp,
+      speed,slow:1,slowUntil:0,dead:false,progress:0});
   }
 
   function placeTower(x,y){
@@ -519,12 +544,12 @@ const UNLOCKS={
 
   function killEnemy(e,tower){
     if(e.dead)return;
-    e.dead=true;state.gold+=ENEMY[e.type].reward;
+    e.dead=true;state.gold+=Math.max(1,Math.floor(ENEMY[e.type].reward*difficultyDef().reward));
     if(tower)tower.kills++;
     awardShards(e.type==="boss"?12:0);
     addXP(Math.max(1,Math.floor(ENEMY[e.type].reward*.75)));
     burst(e.x,e.y,ENEMY[e.type].color,10);
-    floatText(e.x,e.y-18,"+$"+ENEMY[e.type].reward);
+    floatText(e.x,e.y-18,"+$"+Math.max(1,Math.floor(ENEMY[e.type].reward*difficultyDef().reward)));
   }
 
   function update(dt){
@@ -586,7 +611,7 @@ const UNLOCKS={
 
     if(state.waveActive&&state.spawnLeft===0&&state.enemies.length===0){
       state.waveActive=false;
-      const bonus=25+state.wave*3;state.gold+=bonus;
+      const bonus=Math.max(1,Math.floor((25+state.wave*3)*difficultyDef().waveGold));state.gold+=bonus;
       addXP(20+state.wave*2);
       toast("WAVE CLEAR  +$"+bonus+"  +"+(20+state.wave*2)+" XP");
       if(state.wave>=100)win();
@@ -759,6 +784,22 @@ const UNLOCKS={
     if(!isUnlocked(type)){unlockTower(type);return;}
     if(!isUnlocked(type))return;state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;updateUI();
   }));
+  const difficultySelect=document.getElementById("difficultySelect");
+  if(difficultySelect){
+    difficultySelect.value=localStorage.getItem(DIFFICULTY_KEY)||"easy";
+    updateDifficultyUI();
+    difficultySelect.addEventListener("change",()=>{
+      if(state.started&&!state.gameOver&&!state.won){
+        difficultySelect.value=state.difficulty||"easy";
+        updateDifficultyUI();
+        toast("DIFFICULTY LOCKED FOR THIS RUN");
+        return;
+      }
+      localStorage.setItem(DIFFICULTY_KEY,difficultySelect.value);
+      reset();
+      updateDifficultyUI();
+    });
+  }
   const startButton=document.getElementById("startButton");
   if(startButton)startButton.addEventListener("click",startGame);
   const saveButton=document.getElementById("saveButton");
@@ -797,6 +838,7 @@ const UNLOCKS={
 
   function updateUI(){
     document.getElementById("waveValue").textContent=state.wave;
+    updateDifficultyUI();
     document.getElementById("goldValue").textContent=state.gold;
     document.getElementById("livesValue").textContent=state.lives;
     const t=state.selectedTower,info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode");
