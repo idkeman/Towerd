@@ -407,6 +407,37 @@
     state.traps=state.traps.filter(t=>!t.dead);
   }
 
+  function nearestPathPoint(x,y){
+    let best=null,bestD=Infinity;
+    for(let i=0;i<path.length-1;i++){
+      const a=path[i],b=path[i+1],dx=b.x-a.x,dy=b.y-a.y,den=dx*dx+dy*dy;
+      const q=Math.max(0,Math.min(1,((x-a.x)*dx+(y-a.y)*dy)/den));
+      const p={x:a.x+q*dx,y:a.y+q*dy},d=Math.hypot(x-p.x,y-p.y);
+      if(d<bestD){bestD=d;best=p;}
+    }
+    return best;
+  }
+  function placeTrap(t){
+    const d=TYPES.trap,p=nearestPathPoint(t.x,t.y);
+    if(!p||Math.hypot(t.x-p.x,t.y-p.y)>d.range)return false;
+    if(state.traps.some(tr=>Math.hypot(tr.x-p.x,tr.y-p.y)<28))return false;
+    state.traps.push({x:p.x,y:p.y,damage:d.damage*(1+(t.level-1)*.25),life:d.trapLife*(1+(t.level-1)*.15),slow:d.slow,slowTime:d.slowTime,dead:false});
+    t.cooldown=d.rate*Math.pow(.94,t.level-1);burst(p.x,p.y,d.color,7);return true;
+  }
+  function updateTraps(dt){
+    for(const tr of state.traps){
+      tr.life-=dt;
+      if(tr.life<=0){tr.dead=true;continue;}
+      for(const e of state.enemies){
+        if(!e.dead&&Math.hypot(e.x-tr.x,e.y-tr.y)<22){
+          e.hp-=tr.damage;e.slow=tr.slow;e.slowUntil=state.time+tr.slowTime;tr.dead=true;
+          burst(tr.x,tr.y,TYPES.trap.color,16);floatText(tr.x,tr.y-16,"SPIKE -"+Math.floor(tr.damage));
+          if(e.hp<=0)killEnemy(e,null);break;
+        }
+      }
+    }
+    state.traps=state.traps.filter(t=>!t.dead);
+  }
   function shoot(t,target){
     const def=TYPES[t.type];
     if(!def.damage||t.type==="trap")return;
@@ -541,7 +572,7 @@
   const TOWER_LOGOS={
     dart:"•",cannon:"◆",frost:"❄",sniper:"⌁",machine:"≡",flame:"♨",tesla:"ϟ",poison:"☠",
     missile:"▲",railgun:"╋",mortar:"●",boomerang:"◖",laser:"—",plasma:"✦",crystal:"◇",
-    shockwave:"◎",drone:"◆",bunker:"▣",chrono:"◷",gravity:"◉",meteor:"☄",bank:"$",trap:"✹"
+    shockwave:"◎",drone:"◆",bunker:"▣",chrono:"◷",gravity:"◉",meteor:"☄",bank:"$",trap:"✹",trap:"✹"
   };
 
   function drawTowerLogo(t,d){
@@ -586,6 +617,16 @@
         const a=i*Math.PI/4;
         ctx.beginPath();ctx.moveTo(Math.cos(a)*5,Math.sin(a)*5);ctx.lineTo(Math.cos(a)*13,Math.sin(a)*13);ctx.stroke();
       }
+      ctx.restore();
+    }
+  }
+  function drawTraps(){
+    for(const tr of state.traps){
+      ctx.save();ctx.translate(tr.x,tr.y);
+      ctx.globalAlpha=Math.max(.2,Math.min(1,tr.life/(TYPES.trap.trapLife*1.5)));
+      ctx.fillStyle="#18212e";ctx.strokeStyle=TYPES.trap.color;ctx.lineWidth=2;
+      ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();ctx.stroke();
+      for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(Math.cos(a)*4,Math.sin(a)*4);ctx.lineTo(Math.cos(a)*13,Math.sin(a)*13);ctx.stroke();}
       ctx.restore();
     }
   }
@@ -730,6 +771,28 @@
   function win(){state.won=true;state.waveActive=false;overlayResult("You held the line.","One hundred waves defeated. The base is secure.","PLAY AGAIN");}
 
   let last=performance.now();
+  function applyOfflineProgress(savedAt){
+    const away=Math.max(0,Math.floor((Date.now()-Number(savedAt||Date.now()))/1000));
+    const cap=Math.min(43200,(2+profile.level*.5)*3600);
+    const seconds=Math.min(away,cap);
+    if(seconds<10)return;
+    const income=state.towers.reduce((sum,t)=>{
+      if(t.type!=="bank")return sum;
+      return sum+(seconds/TYPES.bank.rate)*TYPES.bank.income*(1+(t.level-1)*.25);
+    },0);
+    const bonus=Math.floor((income+seconds/90)*(1+(profile.level-1)*.05));
+    const xp=Math.floor(seconds/30)+Math.floor(bonus/20);
+    let waves=0;
+    if(state.autoWave&&!state.gameOver&&!state.won){
+      waves=Math.min(Math.floor(seconds/45),100-state.wave);
+      state.wave+=waves;
+      state.gold+=waves*30;
+      if(state.wave>=100)state.won=true;
+    }
+    state.gold+=bonus;addXP(xp);
+    if(bonus||waves)toast("AWAY PROGRESS  +$"+bonus+"  +"+xp+" XP"+(waves?"  +"+waves+" WAVES":""));
+  }
+
   function frame(now){
     const raw=Math.min(.05,(now-last)/1000);
     last=now;
@@ -739,6 +802,7 @@
       if(state.started&&!state.gameOver&&!state.won)saveGame(false);
     }
     if(toastTimer>0){toastTimer-=raw;if(toastTimer<=0)document.getElementById("message").classList.add("hidden");}update(raw);draw();requestAnimationFrame(frame);}
+  window.addEventListener("pagehide",()=>{if(state&&state.started&&!state.gameOver&&!state.won)saveGame(false);});
   window.addEventListener("pagehide",()=>{if(state&&state.started&&!state.gameOver&&!state.won)saveGame(false);});
   requestAnimationFrame(frame);
 })();
