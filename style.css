@@ -106,3 +106,11 @@ footer { display:flex; justify-content:space-between; color:#58657a; font-size:1
 .target-control{margin-top:8px;padding:10px;background:#0d131e;border:1px solid #222c3c;border-radius:9px}.target-control label{display:block;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.12em;margin-bottom:6px}.target-control select{width:100%;padding:8px 9px;border-radius:7px;border:1px solid #344157;background:#202a3a;color:var(--text);font:inherit;font-size:11px;cursor:pointer}.target-control select:disabled{opacity:.38;cursor:not-allowed}
 
 .save-controls{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}.save-controls button{margin:0}
+
+.progression-panel{background:#0d131e;border:1px solid #222c3c;border-radius:9px;padding:10px;margin-bottom:10px}
+.progression-head{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.12em}
+.progression-head b{color:var(--accent);font-size:18px;letter-spacing:0}
+.progression-xp{margin-top:5px;color:#9da9bc;font-size:10px}
+.profile-progress{height:5px;background:#202938;border-radius:10px;overflow:hidden;margin-top:6px}
+.profile-progress div{width:0;height:100%;background:var(--accent);transition:width .2s}
+.progression-panel small{display:block;color:#667389;font-size:9px;line-height:1.4;margin-top:7px}
