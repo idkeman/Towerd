@@ -104,3 +104,5 @@ footer { display:flex; justify-content:space-between; color:#58657a; font-size:1
 @media(max-width:700px){#mapMenu{grid-template-columns:repeat(2,1fr)}}
 
 .target-control{margin-top:8px;padding:10px;background:#0d131e;border:1px solid #222c3c;border-radius:9px}.target-control label{display:block;color:var(--muted);font-size:10px;font-weight:800;letter-spacing:.12em;margin-bottom:6px}.target-control select{width:100%;padding:8px 9px;border-radius:7px;border:1px solid #344157;background:#202a3a;color:var(--text);font:inherit;font-size:11px;cursor:pointer}.target-control select:disabled{opacity:.38;cursor:not-allowed}
+
+.save-controls{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:7px}.save-controls button{margin:0}
