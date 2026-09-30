@@ -898,7 +898,15 @@ const UNLOCKS={
     updateUI();
   }
   function sell(){
-    const t=state.selectedTower;if(!t)return;const value=Math.floor(t.totalSpent*.68);state.gold+=value;state.towers=state.towers.filter(x=>x!==t);state.selectedTower=null;state.selectedTowers=[];burst(t.x,t.y,"#fbbf24",12);updateUI();
+    const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
+    if(!selected.length)return;
+    const value=selected.reduce((sum,t)=>sum+Math.floor(t.totalSpent*.68),0);
+    state.gold+=value;
+    state.towers=state.towers.filter(x=>!selected.includes(x));
+    for(const t of selected)burst(t.x,t.y,"#fbbf24",12);
+    state.selectedTower=null;state.selectedTowers=[];
+    toast(selected.length>1?selected.length+" TOWERS SOLD":"TOWER SOLD");
+    updateUI();
   }
 
   function updateUI(){
@@ -917,7 +925,7 @@ const UNLOCKS={
         : "<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(d.damage*(1+(t.level-1)*.25)):"—")+" · Range "+Math.floor(d.range*(1+(t.level-1)*.05))+" · Kills "+t.kills+"</span>";
       targetSelect.disabled=selected.length!==1||!d.damage;targetSelect.value=t.targetMode||"furthest";
       up.disabled=!upgradeable||state.gold<totalCost;up.firstChild.textContent=selected.length>1?"UPGRADE ALL ":"UPGRADE ";document.getElementById("upgradeCost").textContent=!upgradeable?"MAX":"$"+totalCost;
-      sellBtn.disabled=selected.length!==1;document.getElementById("sellValue").textContent=selected.length===1?"$"+Math.floor(t.totalSpent*.68):"—";
+      sellBtn.disabled=!selected.length;document.getElementById("sellValue").textContent=selected.length>1?"$"+selected.reduce((sum,x)=>sum+Math.floor(x.totalSpent*.68),0):"$"+Math.floor(t.totalSpent*.68);sellBtn.firstChild.textContent=selected.length>1?"SELL ALL ":"SELL ";
       replaceBtn.disabled=!t||selected.some(x=>x.type===state.selectedBuild);selectAllBtn.disabled=!t;replaceBtn.textContent=selected.length>1?"REPLACE ALL WITH "+TYPES[state.selectedBuild].name.toUpperCase():"REPLACE WITH "+TYPES[state.selectedBuild].name.toUpperCase();
     }else{
       info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";
