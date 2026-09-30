@@ -802,7 +802,7 @@ const UNLOCKS={
   document.querySelectorAll(".tower-card").forEach(btn=>btn.addEventListener("click",()=>{
     const type=btn.dataset.tower;
     if(!isUnlocked(type)){unlockTower(type);return;}
-    if(!isUnlocked(type))return;state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;updateUI();
+    if(!isUnlocked(type))return;state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;state.selectedTowers=[];updateUI();
   }));
   const difficultySelect=document.getElementById("difficultySelect");
   if(difficultySelect){
@@ -889,7 +889,7 @@ const UNLOCKS={
         ? "<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · "+upgradeable+" upgradeable · Levels "+(sameLevel?levels[0]:"mixed")+"<br>Click UPGRADE ALL to raise every selected tower by one level.</span>"
         : "<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(d.damage*(1+(t.level-1)*.25)):"—")+" · Range "+Math.floor(d.range*(1+(t.level-1)*.05))+" · Kills "+t.kills+"</span>";
       targetSelect.disabled=selected.length!==1||!d.damage;targetSelect.value=t.targetMode||"furthest";
-      up.disabled=!upgradeable||state.gold<totalCost;document.getElementById("upgradeCost").textContent=!upgradeable?"MAX":selected.length>1?"$"+totalCost:"$"+totalCost;
+      up.disabled=!upgradeable||state.gold<totalCost;up.firstChild.textContent=selected.length>1?"UPGRADE ALL ":"UPGRADE ";document.getElementById("upgradeCost").textContent=!upgradeable?"MAX":"$"+totalCost;
       sellBtn.disabled=selected.length!==1;document.getElementById("sellValue").textContent=selected.length===1?"$"+Math.floor(t.totalSpent*.68):"—";
       selectAllBtn.disabled=!t;
     }else{
