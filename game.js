@@ -409,6 +409,32 @@ const UNLOCKS={
       speed,slow:1,slowUntil:0,dead:false,progress:0});
   }
 
+  function replaceSelectedTowers(){
+    const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
+    const newType=state.selectedBuild;
+    if(!selected.length){toast("SELECT TOWERS TO REPLACE");return;}
+    if(!isUnlocked(newType)){toast("TOWER LOCKED");return;}
+    const def=TYPES[newType];
+    if(selected.some(t=>t.type===newType)){toast("ALREADY THAT TOWER TYPE");return;}
+    const refund=selected.reduce((sum,t)=>sum+Math.floor(t.totalSpent*.68),0);
+    const totalCost=selected.length*def.cost;
+    const netCost=Math.max(0,totalCost-refund);
+    if(state.gold+refund<totalCost){toast("NOT ENOUGH GOLD TO REPLACE");return;}
+    state.gold-=netCost;
+    const replacements=selected.map(old=>{
+      const replacement={type:newType,x:old.x,y:old.y,level:1,cooldown:0,totalSpent:def.cost,kills:0,targetMode:"furthest"};
+      if(old.type==="trap")state.traps=state.traps.filter(tr=>Math.hypot(tr.x-old.x)<1||tr.towerType!=="trap");
+      burst(old.x,old.y,def.color,14);
+      return replacement;
+    });
+    state.towers=state.towers.filter(t=>!selected.includes(t));
+    state.towers.push(...replacements);
+    state.selectedTowers=replacements;
+    state.selectedTower=replacements[0]||null;
+    toast(replacements.length+" TOWER"+(replacements.length===1?"":"S")+" REPLACED");
+    updateUI();
+  }
+
   function placeTower(x,y){
     if(!state.started||state.gameOver||state.won)return;
     if(!isUnlocked(state.selectedBuild)){toast("TOWER LOCKED");return;}
@@ -832,6 +858,7 @@ const UNLOCKS={
   document.getElementById("waveButton").onclick=()=>state.started&&!state.waveActive?startWave():null;
   document.getElementById("upgradeButton").onclick=upgrade;
   document.getElementById("selectAllSameButton").onclick=selectAllSameType;
+  document.getElementById("replaceButton").onclick=replaceSelectedTowers;
   document.getElementById("sellButton").onclick=sell;
   document.getElementById("targetMode").onchange=e=>{if(state.selectedTower&&TYPES[state.selectedTower.type].damage){state.selectedTower.targetMode=e.target.value;updateUI();}};
   document.getElementById("speedButton").onclick=()=>{state.speed=state.speed===1?2:state.speed===2?3:1;document.getElementById("speedButton").textContent=state.speed+"× SPEED";};
@@ -847,7 +874,7 @@ const UNLOCKS={
     if(e.key==="Escape"){state.selectedTower=null;state.selectedTowers=[];updateUI();}
     if(e.key.toLowerCase()==="r"&&state.gameOver){reset();startGame();}
   });
-  function selectBuild(type){state.selectedTower=null;state.selectedTowers=[];state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===type));}
+  function selectBuild(type){state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===type));}
   function upgrade(){
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
     if(!selected.length)return;
@@ -880,7 +907,7 @@ const UNLOCKS={
     document.getElementById("goldValue").textContent=state.gold;
     document.getElementById("livesValue").textContent=state.lives;
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
-    const t=selected[0],info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton");
+    const t=selected[0],info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton"),replaceBtn=document.getElementById("replaceButton");
     if(t){
       const d=TYPES[t.type],maxed=selected.filter(x=>x.level>=5).length,upgradeable=selected.length-maxed;
       const totalCost=selected.filter(x=>x.level<5).reduce((sum,x)=>sum+Math.floor(TYPES[x.type].cost*(.72+x.level*.46)),0);
@@ -891,10 +918,10 @@ const UNLOCKS={
       targetSelect.disabled=selected.length!==1||!d.damage;targetSelect.value=t.targetMode||"furthest";
       up.disabled=!upgradeable||state.gold<totalCost;up.firstChild.textContent=selected.length>1?"UPGRADE ALL ":"UPGRADE ";document.getElementById("upgradeCost").textContent=!upgradeable?"MAX":"$"+totalCost;
       sellBtn.disabled=selected.length!==1;document.getElementById("sellValue").textContent=selected.length===1?"$"+Math.floor(t.totalSpent*.68):"—";
-      selectAllBtn.disabled=!t;
+      replaceBtn.disabled=!t||selected.some(x=>x.type===state.selectedBuild);selectAllBtn.disabled=!t;replaceBtn.textContent=selected.length>1?"REPLACE ALL WITH "+TYPES[state.selectedBuild].name.toUpperCase():"REPLACE WITH "+TYPES[state.selectedBuild].name.toUpperCase();
     }else{
       info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";
-      up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";selectAllBtn.disabled=true;document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";
+      up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";selectAllBtn.disabled=true;replaceBtn.disabled=true;replaceBtn.textContent="REPLACE SELECTED";document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";
     }
     const progress=state.spawnTotal?Math.min(1,1-(state.spawnLeft/state.spawnTotal)):(state.waveActive?0:1);
     document.getElementById("waveProgressBar").style.width=(progress*100)+"%";updateProgressionUI();
