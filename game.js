@@ -260,7 +260,7 @@ const UNLOCKS={
         towers:Array.isArray(save.towers)?save.towers:[],
         enemies:Array.isArray(save.enemies)?save.enemies:[],
         shots:[],particles:[],texts:[],selectedTower:null,
-        selectedBuild:save.selectedBuild||"dart",
+        selectedBuild:save.selectedBuild||"dart",selectedTowers:[],
         traps:Array.isArray(save.traps)?save.traps:[],
         waveActive:!!save.waveActive,spawnLeft:Number(save.spawnLeft)||0,
         spawnTimer:Number(save.spawnTimer)||0,spawnTotal:Number(save.spawnTotal)||0,
@@ -325,7 +325,7 @@ const UNLOCKS={
   function reset(){
     state={started:false,gameOver:false,won:false,wave:0,gold:startingGold(),lives:startingLives(),
       towers:[],traps:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
-      selectedBuild:"dart",difficulty:localStorage.getItem(DIFFICULTY_KEY)||"easy",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
+      selectedBuild:"dart",selectedTowers:[],difficulty:localStorage.getItem(DIFFICULTY_KEY)||"easy",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
       speed:1,autoWave:false,betweenTimer:0,time:0,shake:0};
     updateUI();
     updateSaveButtons();
@@ -715,7 +715,7 @@ const UNLOCKS={
   }
   function drawTowers(){
     for(const t of state.towers){
-      const d=TYPES[t.type],selected=t===state.selectedTower;
+      const d=TYPES[t.type],selected=state.selectedTowers?.includes(t)||t===state.selectedTower;
       if(selected){
         ctx.strokeStyle="rgba(103,232,249,.25)";ctx.lineWidth=2;
         ctx.beginPath();ctx.arc(t.x,t.y,d.range,0,Math.PI*2);ctx.stroke();
@@ -772,8 +772,24 @@ const UNLOCKS={
   canvas.addEventListener("click",e=>{
     const p=canvasPos(e);
     const tower=[...state.towers].reverse().find(t=>Math.hypot(t.x-p.x,t.y-p.y)<24);
-    if(tower){state.selectedTower=tower;updateUI();return;}
-    if(state.selectedTower){state.selectedTower=null;updateUI();}
+    if(tower){
+      if(e.shiftKey){
+        const selected=state.selectedTowers||[];
+        if(state.selectedTowers.length&&selected[0].type!==tower.type){
+          state.selectedTowers=[tower];
+        }else if(selected.includes(tower)){
+          state.selectedTowers=selected.filter(t=>t!==tower);
+        }else{
+          state.selectedTowers=[...selected,tower];
+        }
+      }else{
+        state.selectedTowers=[tower];
+      }
+      state.selectedTower=state.selectedTowers[0]||null;
+      updateUI();
+      return;
+    }
+    if(state.selectedTower||state.selectedTowers?.length){state.selectedTower=null;state.selectedTowers=[];updateUI();}
     placeTower(p.x,p.y);
   });
   canvas.addEventListener("mousemove",e=>{const p=canvasPos(e);canvas.style.cursor=state.towers.some(t=>Math.hypot(t.x-p.x,t.y-p.y)<24)?"pointer":(isBuildable(p.x,p.y)?"crosshair":"not-allowed");});
@@ -815,6 +831,7 @@ const UNLOCKS={
   updateSaveButtons();
   document.getElementById("waveButton").onclick=()=>state.started&&!state.waveActive?startWave():null;
   document.getElementById("upgradeButton").onclick=upgrade;
+  document.getElementById("selectAllSameButton").onclick=selectAllSameType;
   document.getElementById("sellButton").onclick=sell;
   document.getElementById("targetMode").onchange=e=>{if(state.selectedTower&&TYPES[state.selectedTower.type].damage){state.selectedTower.targetMode=e.target.value;updateUI();}};
   document.getElementById("speedButton").onclick=()=>{state.speed=state.speed===1?2:state.speed===2?3:1;document.getElementById("speedButton").textContent=state.speed+"× SPEED";};
@@ -827,17 +844,34 @@ const UNLOCKS={
   window.addEventListener("keydown",e=>{
     if(e.key==="1")selectBuild("dart");if(e.key==="2")selectBuild("cannon");if(e.key==="3")selectBuild("frost");
     if(e.code==="Space"){e.preventDefault();if(!state.started)startGame();else if(!state.waveActive)startWave();}
-    if(e.key==="Escape"){state.selectedTower=null;updateUI();}
+    if(e.key==="Escape"){state.selectedTower=null;state.selectedTowers=[];updateUI();}
     if(e.key.toLowerCase()==="r"&&state.gameOver){reset();startGame();}
   });
-  function selectBuild(type){state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===type));}
+  function selectBuild(type){state.selectedTower=null;state.selectedTowers=[];state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===type));}
   function upgrade(){
-    const t=state.selectedTower;if(!t)return;const cost=Math.floor(TYPES[t.type].cost*(.72+t.level*.46));
-    if(t.level>=5){toast("MAX LEVEL");return;}if(state.gold<cost){toast("NOT ENOUGH GOLD");return;}
-    state.gold-=cost;t.level++;t.totalSpent+=cost;burst(t.x,t.y,TYPES[t.type].color,18);updateUI();
+    const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
+    if(!selected.length)return;
+    const upgradeable=selected.filter(t=>t.level<5);
+    if(!upgradeable.length){toast("ALL SELECTED TOWERS ARE MAX LEVEL");return;}
+    const totalCost=upgradeable.reduce((sum,t)=>sum+Math.floor(TYPES[t.type].cost*(.72+t.level*.46)),0);
+    if(state.gold<totalCost){toast("NEED $"+totalCost+" TO UPGRADE ALL");return;}
+    state.gold-=totalCost;
+    for(const t of upgradeable){
+      const cost=Math.floor(TYPES[t.type].cost*(.72+t.level*.46));
+      t.level++;t.totalSpent+=cost;burst(t.x,t.y,TYPES[t.type].color,18);
+    }
+    toast(upgradeable.length+" TOWERS UPGRADED");
+    updateUI();
+  }
+  function selectAllSameType(){
+    const t=state.selectedTower||state.selectedTowers?.[0];
+    if(!t)return;
+    state.selectedTowers=state.towers.filter(x=>x.type===t.type);
+    state.selectedTower=state.selectedTowers[0]||null;
+    updateUI();
   }
   function sell(){
-    const t=state.selectedTower;if(!t)return;const value=Math.floor(t.totalSpent*.68);state.gold+=value;state.towers=state.towers.filter(x=>x!==t);state.selectedTower=null;burst(t.x,t.y,"#fbbf24",12);updateUI();
+    const t=state.selectedTower;if(!t)return;const value=Math.floor(t.totalSpent*.68);state.gold+=value;state.towers=state.towers.filter(x=>x!==t);state.selectedTower=null;state.selectedTowers=[];burst(t.x,t.y,"#fbbf24",12);updateUI();
   }
 
   function updateUI(){
@@ -845,16 +879,22 @@ const UNLOCKS={
     updateDifficultyUI();
     document.getElementById("goldValue").textContent=state.gold;
     document.getElementById("livesValue").textContent=state.lives;
-    const t=state.selectedTower,info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode");
+    const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
+    const t=selected[0],info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton");
     if(t){
-      const d=TYPES[t.type],cost=Math.floor(d.cost*(.72+t.level*.46));
-      info.innerHTML="<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(d.damage*(1+(t.level-1)*.25)):"—")+" · Range "+Math.floor(d.range*(1+(t.level-1)*.05))+" · Kills "+t.kills+"</span>";
-      targetSelect.disabled=!d.damage;targetSelect.value=t.targetMode||"furthest";
-      up.disabled=t.level>=5||state.gold<cost;document.getElementById("upgradeCost").textContent=t.level>=5?"MAX":"$"+cost;
-      sellBtn.disabled=false;document.getElementById("sellValue").textContent="$"+Math.floor(t.totalSpent*.68);
+      const d=TYPES[t.type],maxed=selected.filter(x=>x.level>=5).length,upgradeable=selected.length-maxed;
+      const totalCost=selected.filter(x=>x.level<5).reduce((sum,x)=>sum+Math.floor(TYPES[x.type].cost*(.72+x.level*.46)),0);
+      const levels=selected.map(x=>x.level),sameLevel=levels.every(level=>level===levels[0]);
+      info.innerHTML=selected.length>1
+        ? "<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · "+upgradeable+" upgradeable · Levels "+(sameLevel?levels[0]:"mixed")+"<br>Click UPGRADE ALL to raise every selected tower by one level.</span>"
+        : "<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(d.damage*(1+(t.level-1)*.25)):"—")+" · Range "+Math.floor(d.range*(1+(t.level-1)*.05))+" · Kills "+t.kills+"</span>";
+      targetSelect.disabled=selected.length!==1||!d.damage;targetSelect.value=t.targetMode||"furthest";
+      up.disabled=!upgradeable||state.gold<totalCost;document.getElementById("upgradeCost").textContent=!upgradeable?"MAX":selected.length>1?"$"+totalCost:"$"+totalCost;
+      sellBtn.disabled=selected.length!==1;document.getElementById("sellValue").textContent=selected.length===1?"$"+Math.floor(t.totalSpent*.68):"—";
+      selectAllBtn.disabled=!t;
     }else{
       info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";
-      up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";
+      up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";selectAllBtn.disabled=true;document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";
     }
     const progress=state.spawnTotal?Math.min(1,1-(state.spawnLeft/state.spawnTotal)):(state.waveActive?0:1);
     document.getElementById("waveProgressBar").style.width=(progress*100)+"%";updateProgressionUI();
