@@ -131,7 +131,7 @@
     const type=TYPES[state.selectedBuild];
     if(state.gold<type.cost){toast("NOT ENOUGH GOLD");return;}
     if(!isBuildable(x,y))return;
-    const t={type:state.selectedBuild,x,y,level:1,cooldown:0,totalSpent:type.cost,kills:0};
+    const t={type:state.selectedBuild,x,y,level:1,cooldown:0,totalSpent:type.cost,kills:0,targetMode:"furthest"};
     state.gold-=type.cost;state.towers.push(t);state.selectedTower=t;
     burst(x,y,type.color,12);updateUI();
   }
@@ -151,10 +151,16 @@
   function nearestTarget(t){
     const def=TYPES[t.type];
     const levelScale=1+(t.level-1)*0.05;
-    let best=null,bestProgress=-1;
+    const mode=t.targetMode||"furthest";
+    let best=null,bestScore=(mode==="weakest"||mode==="closest")?Infinity:-Infinity;
     for(const e of state.enemies){
       if(e.dead||dist(t,e)>def.range*levelScale)continue;
-      if(e.progress>bestProgress){best=e;bestProgress=e.progress;}
+      let score;
+      if(mode==="strongest")score=ENEMY[e.type].hp;
+      else if(mode==="weakest")score=e.hp;
+      else if(mode==="closest")score=dist(t,e);
+      else score=e.progress;
+      if((mode==="weakest"||mode==="closest")?score<bestScore:score>bestScore){best=e;bestScore=score;}
     }
     return best;
   }
@@ -396,6 +402,7 @@
   document.getElementById("waveButton").onclick=()=>state.started&&!state.waveActive?startWave():null;
   document.getElementById("upgradeButton").onclick=upgrade;
   document.getElementById("sellButton").onclick=sell;
+  document.getElementById("targetMode").onchange=e=>{if(state.selectedTower&&TYPES[state.selectedTower.type].damage){state.selectedTower.targetMode=e.target.value;updateUI();}};
   document.getElementById("speedButton").onclick=()=>{state.speed=state.speed===1?2:state.speed===2?3:1;document.getElementById("speedButton").textContent=state.speed+"× SPEED";};
   document.getElementById("autoWaveButton").onclick=()=>{
     state.autoWave=!state.autoWave;
@@ -423,15 +430,16 @@
     document.getElementById("waveValue").textContent=state.wave;
     document.getElementById("goldValue").textContent=state.gold;
     document.getElementById("livesValue").textContent=state.lives;
-    const t=state.selectedTower,info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton");
+    const t=state.selectedTower,info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode");
     if(t){
       const d=TYPES[t.type],cost=Math.floor(d.cost*(.72+t.level*.46));
-      info.innerHTML="<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+Math.floor(d.damage*(1+(t.level-1)*.25))+" · Range "+Math.floor(d.range*(1+(t.level-1)*.05))+" · Kills "+t.kills+"</span>";
+      info.innerHTML="<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(d.damage*(1+(t.level-1)*.25)):"—")+" · Range "+Math.floor(d.range*(1+(t.level-1)*.05))+" · Kills "+t.kills+"</span>";
+      targetSelect.disabled=!d.damage;targetSelect.value=t.targetMode||"furthest";
       up.disabled=t.level>=5||state.gold<cost;document.getElementById("upgradeCost").textContent=t.level>=5?"MAX":"$"+cost;
       sellBtn.disabled=false;document.getElementById("sellValue").textContent="$"+Math.floor(t.totalSpent*.68);
     }else{
       info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click a build pad.</span>";
-      up.disabled=true;sellBtn.disabled=true;document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";
+      up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";
     }
     const progress=state.spawnTotal?Math.min(1,1-(state.spawnLeft/state.spawnTotal)):(state.waveActive?0:1);
     document.getElementById("waveProgressBar").style.width=(progress*100)+"%";
