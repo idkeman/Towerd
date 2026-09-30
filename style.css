@@ -119,3 +119,5 @@ footer { display:flex; justify-content:space-between; color:#58657a; font-size:1
 .locked-tower:hover{opacity:.9;border-color:#fbbf24}
 .locked-tower strong{font-size:9px;color:#fbbf24}
 .locked-tower .tower-icon{font-size:13px}
+
+.difficulty-picker{margin:12px 0 14px;padding:11px;background:#0d131e;border:1px solid #222c3c;border-radius:9px}.difficulty-select{width:100%;padding:9px 10px;border:1px solid #34445c;border-radius:7px;background:#111a28;color:#f8fafc;font:800 12px system-ui;outline:none}.difficulty-select:focus{border-color:#67e8f9}.difficulty-note{display:block;margin-top:7px;color:#718096;font-size:9px;line-height:1.45}
