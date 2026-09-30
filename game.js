@@ -99,10 +99,17 @@
 
   function startGame(){
     if(state.started&&!state.gameOver&&!state.won)return;
-    state.started=true;state.gameOver=false;state.won=false;
-    document.getElementById("startOverlay").classList.add("hidden");
+    state.started=true;
+    state.gameOver=false;
+    state.won=false;
+    const overlay=document.getElementById("startOverlay");
+    if(overlay)overlay.classList.add("hidden");
     startWave();
   }
+
+  // Expose startup immediately so the HTML button still works even if a later
+  // optional binding fails or the page is served from a cached copy.
+  window.towerdStart=startGame;
   function startWave(){
     if(!state.started||state.gameOver||state.won||state.waveActive)return;
     if(state.wave>=100){win();return;}
@@ -384,8 +391,8 @@
   document.querySelectorAll(".tower-card").forEach(btn=>btn.addEventListener("click",()=>{
     state.selectedBuild=btn.dataset.tower;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;updateUI();
   }));
-  window.towerdStart=startGame;
-  document.getElementById("startButton").addEventListener("click",startGame);
+  const startButton=document.getElementById("startButton");
+  if(startButton)startButton.addEventListener("click",startGame);
   document.getElementById("waveButton").onclick=()=>state.started&&!state.waveActive?startWave():null;
   document.getElementById("upgradeButton").onclick=upgrade;
   document.getElementById("sellButton").onclick=sell;
