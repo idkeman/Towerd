@@ -264,7 +264,7 @@
   function draw(){
     ctx.save();
     if(state.shake>0)ctx.translate((Math.random()-.5)*state.shake,(Math.random()-.5)*state.shake);
-    drawMap();drawBuildSpots();drawTowers();drawEnemies();drawShots();drawParticles();drawTexts();ctx.restore();
+    drawMap();drawTowers();drawEnemies();drawShots();drawParticles();drawTexts();ctx.restore();
   }
   function drawMap(){
     ctx.fillStyle="#09111d";ctx.fillRect(0,0,W,H);
@@ -386,7 +386,7 @@
     if(state.selectedTower){state.selectedTower=null;updateUI();}
     placeTower(p.x,p.y);
   });
-  canvas.addEventListener("mousemove",e=>{const p=canvasPos(e);canvas.style.cursor=state.towers.some(t=>Math.hypot(t.x-p.x,t.y-p.y)<24)?"pointer":"crosshair";});
+  canvas.addEventListener("mousemove",e=>{const p=canvasPos(e);canvas.style.cursor=state.towers.some(t=>Math.hypot(t.x-p.x,t.y-p.y)<24)?"pointer":(isBuildable(p.x,p.y)?"crosshair":"not-allowed");});
 
   document.querySelectorAll(".map-card").forEach(btn=>btn.addEventListener("click",()=>{
     selectMap(Number(btn.dataset.map));
@@ -437,7 +437,7 @@
       up.disabled=t.level>=5||state.gold<cost;document.getElementById("upgradeCost").textContent=t.level>=5?"MAX":"$"+cost;
       sellBtn.disabled=false;document.getElementById("sellValue").textContent="$"+Math.floor(t.totalSpent*.68);
     }else{
-      info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click a build pad.</span>";
+      info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";
       up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";
     }
     const progress=state.spawnTotal?Math.min(1,1-(state.spawnLeft/state.spawnTotal)):(state.waveActive?0:1);
