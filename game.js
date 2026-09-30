@@ -50,13 +50,128 @@
     boss:{hp:1800,speed:24,reward:140,r:25,color:"#f43f5e"}
   };
 
+  const SAVE_KEY="towerd-save-v1";
   let state;
+  let saveTimer=0;
+
+  function saveGame(showMessage=false){
+    try{
+      if(!state||!state.started)return false;
+      const snapshot={
+        version:1,
+        map:currentMap,
+        wave:state.wave,
+        gold:state.gold,
+        lives:state.lives,
+        started:state.started,
+        gameOver:state.gameOver,
+        won:state.won,
+        waveActive:state.waveActive,
+        spawnLeft:state.spawnLeft,
+        spawnTimer:state.spawnTimer,
+        spawnTotal:state.spawnTotal,
+        speed:state.speed,
+        autoWave:state.autoWave,
+        betweenTimer:state.betweenTimer,
+        time:state.time,
+        selectedBuild:state.selectedBuild,
+        towers:state.towers.map(t=>({
+          type:t.type,x:t.x,y:t.y,level:t.level,cooldown:t.cooldown,
+          totalSpent:t.totalSpent,kills:t.kills,targetMode:t.targetMode||"furthest"
+        })),
+        enemies:state.enemies.filter(e=>!e.dead).map(e=>({
+          type:e.type,x:e.x,y:e.y,distance:e.distance,hp:e.hp,maxHp:e.maxHp,
+          speed:e.speed,slow:e.slow,slowUntil:e.slowUntil,progress:e.progress
+        }))
+      };
+      localStorage.setItem(SAVE_KEY,JSON.stringify(snapshot));
+      if(showMessage)toast("GAME SAVED");
+      return true;
+    }catch(error){
+      console.warn("Towerd save failed:",error);
+      if(showMessage)toast("SAVE FAILED");
+      return false;
+    }
+  }
+
+  function hasSavedGame(){
+    try{return !!localStorage.getItem(SAVE_KEY);}catch{return false;}
+  }
+
+  function loadGame(showMessage=true){
+    try{
+      const raw=localStorage.getItem(SAVE_KEY);
+      if(!raw)return false;
+      const save=JSON.parse(raw);
+      if(!save||save.version!==1)return false;
+
+      currentMap=Math.max(0,Math.min(MAPS.length-1,Number(save.map)||0));
+      path=MAPS[currentMap].path;
+      buildSpots=MAPS[currentMap].spots;
+
+      state={
+        started:!!save.started,gameOver:!!save.gameOver,won:!!save.won,
+        wave:Number(save.wave)||0,gold:Number(save.gold)||250,lives:Number(save.lives)||20,
+        towers:Array.isArray(save.towers)?save.towers:[],
+        enemies:Array.isArray(save.enemies)?save.enemies:[],
+        shots:[],particles:[],texts:[],selectedTower:null,
+        selectedBuild:save.selectedBuild||"dart",
+        waveActive:!!save.waveActive,spawnLeft:Number(save.spawnLeft)||0,
+        spawnTimer:Number(save.spawnTimer)||0,spawnTotal:Number(save.spawnTotal)||0,
+        speed:Number(save.speed)||1,autoWave:!!save.autoWave,
+        betweenTimer:Number(save.betweenTimer)||0,time:Number(save.time)||0,shake:0
+      };
+
+      state.towers=state.towers.filter(t=>TYPES[t.type]).map(t=>({
+        type:t.type,x:Number(t.x),y:Number(t.y),level:Math.max(1,Math.min(5,Number(t.level)||1)),
+        cooldown:Number(t.cooldown)||0,totalSpent:Number(t.totalSpent)||TYPES[t.type].cost,
+        kills:Number(t.kills)||0,targetMode:t.targetMode||"furthest"
+      }));
+      state.enemies=state.enemies.filter(e=>ENEMY[e.type]).map(e=>({
+        type:e.type,x:Number(e.x),y:Number(e.y),distance:Number(e.distance)||0,
+        hp:Number(e.hp),maxHp:Number(e.maxHp)||ENEMY[e.type].hp,
+        speed:Number(e.speed)||ENEMY[e.type].speed,slow:Number(e.slow)||1,
+        slowUntil:Number(e.slowUntil)||0,dead:false,progress:Number(e.progress)||0
+      }));
+
+      document.querySelectorAll(".map-card").forEach((b,i)=>b.classList.toggle("selected",i===currentMap));
+      const label=document.getElementById("mapName");
+      if(label)label.textContent=MAPS[currentMap].name;
+      document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===state.selectedBuild));
+      const overlay=document.getElementById("startOverlay");
+      if(overlay)overlay.classList.add("hidden");
+      updateUI();
+      if(showMessage)toast("GAME LOADED");
+      return true;
+    }catch(error){
+      console.warn("Towerd load failed:",error);
+      return false;
+    }
+  }
+
+  function clearSave(){
+    try{
+      localStorage.removeItem(SAVE_KEY);
+      toast("SAVE DELETED");
+      updateSaveButtons();
+    }catch(error){console.warn("Towerd save delete failed:",error);}
+  }
+
+  function updateSaveButtons(){
+    const load=document.getElementById("loadButton");
+    const clear=document.getElementById("clearSaveButton");
+    const exists=hasSavedGame();
+    if(load)load.disabled=!exists;
+    if(clear)clear.disabled=!exists;
+  }
+
   function reset(){
     state={started:false,gameOver:false,won:false,wave:0,gold:250,lives:20,
       towers:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
       selectedBuild:"dart",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
       speed:1,autoWave:false,betweenTimer:0,time:0,shake:0};
     updateUI();
+    updateSaveButtons();
   }
   reset();
 
@@ -65,6 +180,7 @@
     path=MAPS[currentMap].path;
     buildSpots=MAPS[currentMap].spots;
     reset();
+    updateSaveButtons();
     document.querySelectorAll(".map-card").forEach((b,i)=>b.classList.toggle("selected",i===currentMap));
   }
 
@@ -398,6 +514,13 @@
   }));
   const startButton=document.getElementById("startButton");
   if(startButton)startButton.addEventListener("click",startGame);
+  const saveButton=document.getElementById("saveButton");
+  if(saveButton)saveButton.addEventListener("click",()=>saveGame(true));
+  const loadButton=document.getElementById("loadButton");
+  if(loadButton)loadButton.addEventListener("click",()=>loadGame(true));
+  const clearSaveButton=document.getElementById("clearSaveButton");
+  if(clearSaveButton)clearSaveButton.addEventListener("click",clearSave);
+  updateSaveButtons();
   document.getElementById("waveButton").onclick=()=>state.started&&!state.waveActive?startWave():null;
   document.getElementById("upgradeButton").onclick=upgrade;
   document.getElementById("sellButton").onclick=sell;
@@ -456,6 +579,14 @@
   function win(){state.won=true;state.waveActive=false;overlayResult("You held the line.","One hundred waves defeated. The base is secure.","PLAY AGAIN");}
 
   let last=performance.now();
-  function frame(now){const raw=Math.min(.05,(now-last)/1000);last=now;if(toastTimer>0){toastTimer-=raw;if(toastTimer<=0)document.getElementById("message").classList.add("hidden");}update(raw);draw();requestAnimationFrame(frame);}
+  function frame(now){
+    const raw=Math.min(.05,(now-last)/1000);
+    last=now;
+    saveTimer+=raw;
+    if(saveTimer>=2){
+      saveTimer=0;
+      if(state.started&&!state.gameOver&&!state.won)saveGame(false);
+    }
+    if(toastTimer>0){toastTimer-=raw;if(toastTimer<=0)document.getElementById("message").classList.add("hidden");}update(raw);draw();requestAnimationFrame(frame);}
   requestAnimationFrame(frame);
 })();
