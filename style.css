@@ -114,3 +114,8 @@ footer { display:flex; justify-content:space-between; color:#58657a; font-size:1
 .profile-progress{height:5px;background:#202938;border-radius:10px;overflow:hidden;margin-top:6px}
 .profile-progress div{width:0;height:100%;background:var(--accent);transition:width .2s}
 .progression-panel small{display:block;color:#667389;font-size:9px;line-height:1.4;margin-top:7px}
+
+.locked-tower{opacity:.62;filter:saturate(.35);border-style:dashed;position:relative}
+.locked-tower:hover{opacity:.9;border-color:#fbbf24}
+.locked-tower strong{font-size:9px;color:#fbbf24}
+.locked-tower .tower-icon{font-size:13px}
