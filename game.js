@@ -41,8 +41,39 @@
     gravity:{name:"Gravity",cost:350,range:145,damage:16,rate:1.84,projectile:360,splash:65,slow:.53,slowTime:1.9,color:"#7c3aed",desc:"Group control"},
     meteor:{name:"Meteor",cost:440,range:330,damage:130,rate:4.1,projectile:240,splash:100,color:"#ef4444",desc:"Endgame artillery"},
     bank:{name:"Gold Mine",cost:225,range:0,damage:0,rate:5,projectile:0,income:20,color:"#fbbf24",desc:"Passively generates gold"},trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes near the tower"},
-    trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes that trigger on enemies"}
+    trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes that trigger on enemies"},ember:{name:"Inferno",cost:420,range:135,damage:34,rate:.42,projectile:360,splash:40,color:"#fb5b3b",desc:"Rapid burning area fire"},
+ballista:{name:"Ballista",cost:390,range:330,damage:145,rate:2.2,projectile:900,color:"#c084fc",desc:"Piercing long-range bolts"},
+warden:{name:"Warden",cost:475,range:155,damage:38,rate:.72,projectile:650,splash:28,color:"#4ade80",desc:"Defensive heavy fire"},
+oracle:{name:"Oracle",cost:500,range:280,damage:75,rate:.8,projectile:750,slow:.65,slowTime:2,color:"#f5d0fe",desc:"Predictive slowing shots"},
+harvester:{name:"Harvester",cost:360,range:145,damage:18,rate:.6,projectile:500,income:4,color:"#facc15",desc:"Damages enemies and creates bonus gold"},
+frostbite:{name:"Frostbite",cost:440,range:180,damage:28,rate:1,projectile:620,slow:.42,slowTime:3,color:"#67e8f9",desc:"Extreme freeze control"},
+arc:{name:"Arc Caster",cost:520,range:190,damage:55,rate:1.1,projectile:850,splash:45,color:"#a78bfa",desc:"Arcing electric blasts"},
+volley:{name:"Volley",cost:460,range:170,damage:24,rate:.28,projectile:700,splash:12,color:"#f59e0b",desc:"Extremely rapid volleys"},
+sentinel:{name:"Sentinel",cost:600,range:250,damage:48,rate:.48,projectile:800,color:"#94a3b8",desc:"Elite autonomous defense"},
+beacon:{name:"Beacon",cost:550,range:210,damage:18,rate:1.1,projectile:500,slow:.5,slowTime:2,color:"#fde047",desc:"Weakens and slows enemies"},
+vortex:{name:"Vortex",cost:650,range:175,damage:44,rate:1.5,projectile:300,splash:90,slow:.5,slowTime:2.4,color:"#8b5cf6",desc:"Pulling area devastation"},
+siege:{name:"Siege Engine",cost:700,range:360,damage:210,rate:4.5,projectile:220,splash:110,color:"#78716c",desc:"Massive artillery"},
+swarm:{name:"Swarm Nest",cost:580,range:210,damage:18,rate:.18,projectile:760,color:"#84cc16",desc:"Floods lanes with projectiles"},
+sun:{name:"Sun Core",cost:850,range:230,damage:105,rate:1.8,projectile:500,splash:70,color:"#fbbf24",desc:"Solar area blasts"},
+void:{name:"Void Cannon",cost:900,range:320,damage:280,rate:4.8,projectile:500,splash:80,slow:.4,slowTime:2,color:"#a855f7",desc:"Destroys elite targets"},
+titan:{name:"Titan",cost:1100,range:180,damage:150,rate:.65,projectile:700,splash:55,color:"#f97316",desc:"Heavy endgame powerhouse"},
+prism:{name:"Prism",cost:1000,range:300,damage:115,rate:.72,projectile:950,splash:35,color:"#f0abfc",desc:"Splits devastating energy"},
+plague:{name:"Plague Doctor",cost:760,range:190,damage:32,rate:.7,projectile:430,splash:65,slow:.45,slowTime:2.8,color:"#65a30d",desc:"Infects groups of enemies"},
+overdrive:{name:"Overdrive",cost:1250,range:210,damage:70,rate:.16,projectile:900,color:"#ef4444",desc:"Ridiculous sustained fire"},
+doomsday:{name:"Doomsday",cost:1800,range:390,damage:500,rate:7,projectile:260,splash:150,color:"#dc2626",desc:"Ultimate endgame artillery"}
   };
+  const LOCKED_TOWERS={
+  ember:"Inferno",ballista:"Ballista",warden:"Warden",oracle:"Oracle",harvester:"Harvester",frostbite:"Frostbite",
+  arc:"Arc Caster",volley:"Volley",sentinel:"Sentinel",beacon:"Beacon",vortex:"Vortex",siege:"Siege Engine",
+  swarm:"Swarm Nest",sun:"Sun Core",void:"Void Cannon",titan:"Titan",prism:"Prism",plague:"Plague Doctor",
+  overdrive:"Overdrive",doomsday:"Doomsday"
+};
+const UNLOCKS={
+  ember:{cost:25,level:2},ballista:{cost:35,level:3},warden:{cost:50,level:4},oracle:{cost:65,level:5},harvester:{cost:80,level:6},
+  frostbite:{cost:100,level:7},arc:{cost:125,level:8},volley:{cost:150,level:9},sentinel:{cost:175,level:10},beacon:{cost:200,level:11},
+  vortex:{cost:230,level:12},siege:{cost:260,level:13},swarm:{cost:300,level:14},sun:{cost:350,level:15},void:{cost:400,level:16},
+  titan:{cost:450,level:17},prism:{cost:500,level:18},plague:{cost:550,level:19},overdrive:{cost:625,level:20},doomsday:{cost:750,level:25}
+};
   const ENEMY = {
     grunt:{hp:75,speed:56,reward:8,r:11,color:"#ef4444"},
     runner:{hp:48,speed:105,reward:10,r:9,color:"#f59e0b"},
@@ -55,7 +86,7 @@
   const PROFILE_KEY="towerd-profile-v1";
   let state;
   let saveTimer=0;
-  let profile={level:1,xp:0,totalXp:0};
+  let profile={level:1,xp:0,totalXp:0,shards:0,unlocked:[]};
   let offlineReport=null;
 
   function xpNeeded(level){return 100+(level-1)*75;}
@@ -67,10 +98,19 @@
       const raw=localStorage.getItem(PROFILE_KEY);
       if(raw){
         const p=JSON.parse(raw);
-        profile={level:Math.max(1,Number(p.level)||1),xp:Math.max(0,Number(p.xp)||0),totalXp:Math.max(0,Number(p.totalXp)||0)};
+        profile={level:Math.max(1,Number(p.level)||1),xp:Math.max(0,Number(p.xp)||0),totalXp:Math.max(0,Number(p.totalXp)||0),shards:Math.max(0,Number(p.shards)||0),unlocked:Array.isArray(p.unlocked)?p.unlocked.filter(k=>UNLOCKS[k]):[]};
       }
     }catch(error){console.warn("Towerd profile load failed:",error);}
   }
+  function isUnlocked(type){return !UNLOCKS[type]||profile.unlocked.includes(type);}
+  function unlockTower(type){
+    const req=UNLOCKS[type];
+    if(!req||isUnlocked(type))return true;
+    if(profile.level<req.level){toast("REQUIRES COMMAND RANK "+req.level);return false;}
+    if(profile.shards<req.cost){toast("NEED "+req.cost+" SHARDS");return false;}
+    profile.shards-=req.cost;profile.unlocked.push(type);saveProfile();updateProgressionUI();updateTowerLocks();toast(TYPES[type].name+" UNLOCKED");return true;
+  }
+  function awardShards(amount){profile.shards+=Math.max(0,Math.floor(amount||0));saveProfile();updateProgressionUI();updateTowerLocks();}
   function saveProfile(){
     try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));}catch(error){console.warn("Towerd profile save failed:",error);}
   }
