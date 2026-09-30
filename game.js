@@ -755,7 +755,7 @@
       up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";
     }
     const progress=state.spawnTotal?Math.min(1,1-(state.spawnLeft/state.spawnTotal)):(state.waveActive?0:1);
-    document.getElementById("waveProgressBar").style.width=(progress*100)+"%";
+    document.getElementById("waveProgressBar").style.width=(progress*100)+"%";updateProgressionUI();
     updateProgressionUI();
     const wb=document.getElementById("waveButton");wb.textContent=state.waveActive?"WAVE IN PROGRESS":state.wave>=100?"COMPLETE":"START WAVE";wb.disabled=state.waveActive||state.wave>=100;
   }
