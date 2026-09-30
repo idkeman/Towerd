@@ -1,0 +1,233 @@
+name: Apply Towerd difficulty system
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: "!contains(github.event.head_commit.message, '[difficulty-patched]')"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Patch difficulty system
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          game = Path("game.js").read_text()
+          index = Path("index.html").read_text()
+          style = Path("style.css").read_text()
+
+          # Difficulty definitions and helpers.
+          anchor = '  const ENEMY = {'
+          insert = r'''  const DIFFICULTIES = {
+    easy:{name:"Easy",hp:1,speed:1,count:1,reward:1,lives:20,bossEvery:5,waveGold:1,description:"Current rules. A forgiving 100-wave campaign."},
+    normal:{name:"Normal",hp:2,speed:1.12,count:1.1,reward:.94,lives:20,bossEvery:5,waveGold:.94,description:"Enemies hit harder and arrive faster."},
+    hard:{name:"Hard",hp:4,speed:1.28,count:1.22,reward:.88,lives:18,bossEvery:4,waveGold:.88,description:"Four-times enemy health. Winning this is bragging-rights material."},
+    extreme:{name:"Extreme",hp:8,speed:1.48,count:1.38,reward:.8,lives:16,bossEvery:3,waveGold:.8,description:"Eight-times health, dense waves, frequent bosses."},
+    impossible:{name:"Impossible",hp:16,speed:1.72,count:1.55,reward:.68,lives:12,bossEvery:2,waveGold:.68,description:"Sixteen-times health. Almost no room for mistakes."}
+  };
+  const DIFFICULTY_KEY="towerd-difficulty-v1";
+  function difficultyDef(){
+    const key=state&&state.difficulty?state.difficulty:(document.getElementById("difficultySelect")?.value||"easy");
+    return DIFFICULTIES[key]||DIFFICULTIES.easy;
+  }
+  function difficultyKey(){
+    return state&&state.difficulty?state.difficulty:(document.getElementById("difficultySelect")?.value||"easy");
+  }
+  function difficultyEnemyHp(base){return Math.max(1,Math.floor(base*difficultyDef().hp));}
+  function difficultyEnemySpeed(base){return base*difficultyDef().speed;}
+  function difficultyEnemyCount(base){return Math.max(1,Math.ceil(base*difficultyDef().count));}
+  function difficultyReward(base){return Math.max(1,Math.floor(base*difficultyDef().reward));}
+  function difficultyWaveGold(base){return Math.max(1,Math.floor(base*difficultyDef().waveGold));}
+
+'''
+          if "const DIFFICULTIES =" not in game:
+              game = game.replace(anchor, insert + anchor, 1)
+
+          # Apply difficulty to newly spawned enemies.
+          old = 'state.enemies.push({type,x:path[0].x,y:path[0].y,distance:0,hp:e.hp,maxHp:e.hp,\n      speed:e.speed*(1+Math.min(.55,state.wave*.012)),slow:1,slowUntil:0,dead:false,progress:0});'
+          new = 'const hp=difficultyEnemyHp(e.hp)*(1+Math.min(2.5,state.wave*.018));\n    const speed=difficultyEnemySpeed(e.speed)*(1+Math.min(.55,state.wave*.012));\n    state.enemies.push({type,x:path[0].x,y:path[0].y,distance:0,hp,maxHp:hp,\n      speed,slow:1,slowUntil:0,dead:false,progress:0});'
+          if old in game:
+              game = game.replace(old,new,1)
+          else:
+              game = game.replace(
+                  'state.enemies.push({type,x:path[0].x,y:path[0].y,distance:0,hp:e.hp,maxHp:e.hp,',
+                  'const hp=difficultyEnemyHp(e.hp)*(1+Math.min(2.5,state.wave*.018));\n    const speed=difficultyEnemySpeed(e.speed)*(1+Math.min(.55,state.wave*.012));\n    state.enemies.push({type,x:path[0].x,y:path[0].y,distance:0,hp,maxHp:hp,',
+                  1)
+              game = game.replace('speed:e.speed*(1+Math.min(.55,state.wave*.012)),slow:1,', 'speed,slow:1,', 1)
+
+          # Scale wave size/delay and boss cadence.
+          game = game.replace(
+              'const total=8+Math.floor(n*2.3)+(n%5===0?1:0);',
+              'const total=difficultyEnemyCount(8+Math.floor(n*2.3)+(n%5===0?1:0));',
+              1
+          )
+          game = game.replace(
+              'return {total,delay:Math.max(.24,.72-n*.012),pool};',
+              'return {total,delay:Math.max(.16,(.72-n*.012)/difficultyDef().speed),pool};',
+              1
+          )
+          game = game.replace(
+              'if(n%5===0 && state.spawnLeft===state.spawnTotal)return"boss";',
+              'if(n%difficultyDef().bossEvery===0 && state.spawnLeft===state.spawnTotal)return"boss";',
+              1
+          )
+
+          # Scale enemy rewards and wave rewards.
+          game = game.replace(
+              'e.dead=true;state.gold+=ENEMY[e.type].reward;',
+              'e.dead=true;state.gold+=difficultyReward(ENEMY[e.type].reward);',
+              1
+          )
+          game = game.replace(
+              'floatText(e.x,e.y-18,"+$"+ENEMY[e.type].reward);',
+              'floatText(e.x,e.y-18,"+$"+difficultyReward(ENEMY[e.type].reward));',
+              1
+          )
+          game = game.replace(
+              'const bonus=25+state.wave*3;state.gold+=bonus;',
+              'const bonus=difficultyWaveGold(25+state.wave*3);state.gold+=bonus;',
+              1
+          )
+
+          # Difficulty-aware starting lives and persistent state.
+          game = game.replace(
+              'function startingLives(){return 20+Math.floor((profile.level-1)/3);}',
+              'function startingLives(){return Math.max(1,Math.floor((20+Math.floor((profile.level-1)/3))*difficultyDef().lives/20));}',
+              1
+          )
+          game = game.replace(
+              'towers:[],traps:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,',
+              'towers:[],traps:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,difficulty:(document.getElementById("difficultySelect")?.value||localStorage.getItem(DIFFICULTY_KEY)||"easy"),',
+              1
+          )
+          game = game.replace(
+              'autoWave:state.autoWave,',
+              'autoWave:state.autoWave,\n        difficulty:state.difficulty||"easy",',
+              1
+          )
+          game = game.replace(
+              'speed:Number(save.speed)||1,autoWave:!!save.autoWave,',
+              'speed:Number(save.speed)||1,autoWave:!!save.autoWave,\n        difficulty:save.difficulty||localStorage.getItem(DIFFICULTY_KEY)||"easy",',
+              1
+          )
+
+          # Difficulty selector synchronization and save/load.
+          if 'difficultySelect' not in game:
+              game = game.replace(
+                  'const startButton=document.getElementById("startButton");',
+                  '''const difficultySelect=document.getElementById("difficultySelect");
+  if(difficultySelect){
+    const savedDifficulty=localStorage.getItem(DIFFICULTY_KEY)||"easy";
+    difficultySelect.value=DIFFICULTIES[savedDifficulty]?savedDifficulty:"easy";
+    difficultySelect.addEventListener("change",()=>{
+      if(state.started&&!state.gameOver&&!state.won){
+        difficultySelect.value=state.difficulty||"easy";
+        toast("DIFFICULTY CAN ONLY CHANGE BEFORE A RUN");
+        return;
+      }
+      localStorage.setItem(DIFFICULTY_KEY,difficultySelect.value);
+      if(state)state.difficulty=difficultySelect.value;
+      updateDifficultyUI();
+      reset();
+    });
+  }
+  function updateDifficultyUI(){
+    const select=document.getElementById("difficultySelect");
+    const note=document.getElementById("difficultyNote");
+    if(!select)return;
+    const d=DIFFICULTIES[select.value]||DIFFICULTIES.easy;
+    if(note)note.textContent=d.description+"  •  HP ×"+d.hp+"  •  speed ×"+d.speed.toFixed(2)+"  •  waves ×"+d.count.toFixed(2);
+  }
+
+  const startButton=document.getElementById("startButton");''',
+                  1
+              )
+
+          # Ensure selected difficulty is applied at run start.
+          game = game.replace(
+              'state.started=true;\n    state.gameOver=false;',
+              'state.difficulty=document.getElementById("difficultySelect")?.value||state.difficulty||"easy";\n    localStorage.setItem(DIFFICULTY_KEY,state.difficulty);\n    state.started=true;\n    state.gameOver=false;',
+              1
+          )
+
+          # Result text names the difficulty.
+          game = game.replace(
+              '"One hundred waves defeated. The base is secure."',
+              '"One hundred waves defeated on "+(DIFFICULTIES[state.difficulty]?.name||"Easy")+". The base is secure."',
+              1
+          )
+
+          # UI update with difficulty.
+          game = game.replace(
+              'document.getElementById("waveValue").textContent=state.wave;',
+              'document.getElementById("waveValue").textContent=state.wave;\n    updateDifficultyUI();',
+              1
+          )
+
+          # Clean duplicate trap/logo/draw declarations caused by earlier edits.
+          game = game.replace(
+              '},trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes near the tower"},\n    trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes that trigger on enemies"},',
+              '},trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes that trigger on enemies"},',
+              1
+          )
+          game = game.replace('bank:"$",trap:"✹",trap:"✹"', 'bank:"$",trap:"✹"', 1)
+
+          # Difficulty selector in the start overlay.
+          if 'id="difficultySelect"' not in index:
+              marker='''        <div class="map-picker">'''
+              difficulty='''        <div class="difficulty-picker">
+          <div class="map-picker-title"><span>DIFFICULTY</span><b>CHOOSE YOUR PAIN</b></div>
+          <select id="difficultySelect" class="difficulty-select">
+            <option value="easy">Easy — 1× HP</option>
+            <option value="normal">Normal — 2× HP</option>
+            <option value="hard">Hard — 4× HP</option>
+            <option value="extreme">Extreme — 8× HP</option>
+            <option value="impossible">Impossible — 16× HP</option>
+          </select>
+          <small id="difficultyNote" class="difficulty-note">Current rules. A forgiving 100-wave campaign. • HP ×1 • speed ×1.00 • waves ×1.00</small>
+        </div>
+'''
+              index=index.replace(marker,difficulty+marker,1)
+
+          # Difficulty styling.
+          if '.difficulty-picker' not in style:
+              style += '''
+.difficulty-picker{margin:12px 0 14px;padding:11px;background:#0d131e;border:1px solid #222c3c;border-radius:9px}
+.difficulty-select{width:100%;padding:9px 10px;border:1px solid #34445c;border-radius:7px;background:#111a28;color:#f8fafc;font:800 12px system-ui;outline:none}
+.difficulty-select:focus{border-color:#67e8f9}
+.difficulty-note{display:block;margin-top:7px;color:#718096;font-size:9px;line-height:1.45}
+'''
+
+          Path("game.js").write_text(game)
+          Path("index.html").write_text(index)
+          Path("style.css").write_text(style)
+
+          # Fail loudly if the patch did not land.
+          required = [
+              "const DIFFICULTIES",
+              "difficultyEnemyHp",
+              "difficultyEnemySpeed",
+              "difficultyEnemyCount",
+              'id="difficultySelect"',
+              ".difficulty-picker"
+          ]
+          blob = game + index + style
+          missing=[x for x in required if x not in blob]
+          if missing:
+              raise SystemExit("Missing difficulty patch markers: "+", ".join(missing))
+      - name: Commit difficulty system
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add game.js index.html style.css
+          git diff --cached --quiet && exit 0
+          git commit -m "Add five difficulty modes [difficulty-patched]"
+          git push
