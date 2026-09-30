@@ -27,6 +27,17 @@
         <div class="eyebrow">DEFENSE PROTOCOL</div>
         <h1>Hold the line.</h1>
         <p>Build a defense, manipulate enemy speed, and survive an escalating campaign of 100 waves.</p>
+        <div class="difficulty-picker">
+          <div class="map-picker-title"><span>DIFFICULTY</span><b>CHOOSE YOUR PAIN</b></div>
+          <select id="difficultySelect" class="difficulty-select">
+            <option value="easy">Easy — 1× HP</option>
+            <option value="normal">Normal — 2× HP</option>
+            <option value="hard">Hard — 4× HP</option>
+            <option value="extreme">Extreme — 8× HP</option>
+            <option value="impossible">Impossible — 16× HP</option>
+          </select>
+          <small id="difficultyNote" class="difficulty-note"></small>
+        </div>
         <div class="map-picker">
           <div class="map-picker-title"><span>MAP</span><b id="mapName">Crossroads</b></div>
           <div id="mapMenu">
