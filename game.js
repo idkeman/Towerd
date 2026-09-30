@@ -137,7 +137,6 @@
   }
   function isBuildable(x,y){
     if(x<28||y<28||x>W-28||y>H-28)return false;
-    if(buildSpots.every(([bx,by])=>Math.hypot(x-bx,y-by)>45))return false;
     if(state.towers.some(t=>Math.hypot(x-t.x,y-t.y)<42))return false;
     for(let i=0;i<path.length-1;i++){
       const a=path[i],b=path[i+1];
