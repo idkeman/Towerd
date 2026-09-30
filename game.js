@@ -111,6 +111,18 @@ const UNLOCKS={
     profile.shards-=req.cost;profile.unlocked.push(type);saveProfile();updateProgressionUI();updateTowerLocks();toast(TYPES[type].name+" UNLOCKED");return true;
   }
   function awardShards(amount){profile.shards+=Math.max(0,Math.floor(amount||0));saveProfile();updateProgressionUI();updateTowerLocks();}
+  function updateTowerLocks(){
+    document.querySelectorAll(".tower-card[data-tower]").forEach(btn=>{
+      const type=btn.dataset.tower,req=UNLOCKS[type];
+      if(!req)return;
+      const unlocked=isUnlocked(type);
+      btn.classList.toggle("locked-tower",!unlocked);
+      btn.dataset.locked=unlocked?"false":"true";
+      const small=btn.querySelector("small"),price=btn.querySelector("strong");
+      if(small)small.textContent=unlocked?TYPES[type].desc:"Rank "+req.level+" + "+req.cost+" Shards";
+      if(price)price.textContent=unlocked?"$"+TYPES[type].cost:"LOCKED";
+    });
+  }
   function saveProfile(){
     try{localStorage.setItem(PROFILE_KEY,JSON.stringify(profile));}catch(error){console.warn("Towerd profile save failed:",error);}
   }
@@ -125,7 +137,7 @@ const UNLOCKS={
       leveled=true;
     }
     saveProfile();
-    updateProgressionUI();
+    updateProgressionUI();updateTowerLocks();
     if(leveled)toast("COMMAND RANK "+profile.level+"  +PERMANENT BONUS");
   }
   function updateProgressionUI(){
@@ -370,6 +382,7 @@ const UNLOCKS={
 
   function placeTower(x,y){
     if(!state.started||state.gameOver||state.won)return;
+    if(!isUnlocked(state.selectedBuild)){toast("TOWER LOCKED");return;}
     const type=TYPES[state.selectedBuild];
     if(state.gold<type.cost){toast("NOT ENOUGH GOLD");return;}
     if(!isBuildable(x,y))return;
@@ -508,6 +521,7 @@ const UNLOCKS={
     if(e.dead)return;
     e.dead=true;state.gold+=ENEMY[e.type].reward;
     if(tower)tower.kills++;
+    awardShards(e.type==="boss"?12:0);
     addXP(Math.max(1,Math.floor(ENEMY[e.type].reward*.75)));
     burst(e.x,e.y,ENEMY[e.type].color,10);
     floatText(e.x,e.y-18,"+$"+ENEMY[e.type].reward);
@@ -741,7 +755,9 @@ const UNLOCKS={
     if(label)label.textContent=MAPS[currentMap].name;
   }));
   document.querySelectorAll(".tower-card").forEach(btn=>btn.addEventListener("click",()=>{
-    state.selectedBuild=btn.dataset.tower;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;updateUI();
+    const type=btn.dataset.tower;
+    if(!isUnlocked(type)){unlockTower(type);return;}
+    if(!isUnlocked(type))return;state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;updateUI();
   }));
   const startButton=document.getElementById("startButton");
   if(startButton)startButton.addEventListener("click",startGame);
