@@ -215,3 +215,58 @@ footer { display:flex; justify-content:space-between; color:#58657a; font-size:1
   #towerSettings{grid-template-columns:1fr}
   #towerUpgradePaths{grid-template-columns:1fr}
 }
+html,body{width:100%;height:100%;overflow:hidden}
+body{background:#050912}
+#app{width:100vw;height:100vh;max-width:none;margin:0;padding:0}
+.topbar{position:absolute;z-index:20;top:10px;left:12px;right:12px;margin:0;pointer-events:none}
+.topbar>div{pointer-events:auto}
+.logo{font-size:22px;text-shadow:0 2px 8px rgba(0,0,0,.75)}
+.subtitle{display:none}
+.stats{gap:6px}
+.stat{min-width:64px;padding:6px 9px;border-radius:9px;background:rgba(7,13,23,.78);border-color:rgba(148,163,184,.32);box-shadow:0 4px 16px rgba(0,0,0,.25);backdrop-filter:blur(7px)}
+.stat span{font-size:8px}
+.stat b{font-size:16px}
+.game-shell{width:100%;height:100%;display:block}
+.canvas-wrap{width:100%;height:100%;min-height:100%;border:0;border-radius:0;box-shadow:none}
+canvas{width:100%;height:100%;aspect-ratio:auto}
+footer{display:none}
+.control-panel{bottom:14px;left:50%;right:auto;inset-block-start:auto;transform:translateX(-50%);width:min(390px,calc(100vw - 28px));max-height:none;overflow:hidden;padding:8px;border-radius:12px;background:rgba(6,12,20,.88);border-color:rgba(148,163,184,.35)}
+.control-modebar{margin:0;padding:0;border:0;min-height:34px}
+.control-modebar #controlModeLabel{font-size:18px}
+.control-mode-actions button{min-width:38px;width:38px;height:34px;padding:6px;font-size:16px}
+.control-view{max-height:none;overflow:visible}
+#buildSettings #towerMenu{display:flex;flex-wrap:nowrap;gap:6px;max-width:100%;max-height:none;overflow-x:auto;overflow-y:hidden;padding:0 1px 2px}
+#buildSettings #towerMenu::-webkit-scrollbar{height:5px}
+#buildSettings .tower-card{flex:0 0 58px;width:58px;height:58px;min-width:58px;padding:5px;border-radius:9px}
+#buildSettings .tower-sign{font-size:21px}
+#buildSettings .tower-price{font-size:9px}
+#buildSettings .locked-tower .tower-sign{font-size:17px}
+#buildSettings .locked-tower .tower-price{font-size:9px}
+#buildSettings .progression-panel{display:none}
+.control-panel.wave-mode{width:min(330px,calc(100vw - 28px))}
+#waveSettings{display:grid;grid-template-columns:auto auto auto;gap:6px;align-items:center}
+#waveSettings .wave-controls{display:flex;gap:6px}
+#waveSettings .wave-controls button,#waveSettings .auto-wave,#waveSettings .save-controls button{width:42px;height:38px;min-width:42px;margin:0;padding:4px}
+#waveSettings .save-controls{display:flex;gap:6px;margin:0}
+#waveSettings .wave-progress{grid-column:1/-1;margin:1px 0 0;height:4px}
+#waveSettings .tip{display:none}
+.control-panel.build-mode{width:min(900px,calc(100vw - 28px))}
+.control-panel.tower-mode{left:auto;right:14px;transform:none;width:min(390px,calc(100vw - 28px));max-height:min(72vh,520px);overflow:auto}
+.control-panel.tower-mode .control-modebar{position:sticky;top:0;z-index:2;background:rgba(6,12,20,.94);padding-bottom:7px}
+#towerSettings{display:block}
+#towerUpgradePaths{grid-template-columns:repeat(3,1fr)}
+#towerSettings .branch-controls{grid-template-columns:repeat(3,1fr)}
+#towerSettings .branch-button{min-height:42px;justify-content:center;text-align:center}
+#towerSettings .target-control{display:flex;align-items:center;gap:7px;padding:6px;margin-top:6px}
+#towerSettings .target-control label{margin:0}
+#towerSettings .target-control select{flex:1}
+#towerSettings .divider{display:none}
+@media(max-width:700px){
+  .topbar{top:7px;left:7px;right:7px}
+  .logo{font-size:18px}.stats{gap:3px}.stat{min-width:54px;padding:5px 7px}.stat b{font-size:14px}
+  .control-panel{bottom:7px}
+  .control-panel.build-mode{width:calc(100vw - 14px)}
+  .control-panel.tower-mode{left:7px;right:7px;bottom:7px;width:auto;max-height:60vh}
+  #towerUpgradePaths{grid-template-columns:1fr}
+  #towerSettings .branch-controls{grid-template-columns:1fr}
+}
