@@ -168,12 +168,21 @@ const UNLOCKS={
     if(!panel||!paths)return;
     const type=state?.selectedBuild||"dart",def=TYPES[type],amount=towerXP(type),tree=towerUpgradeState(type);
     name.textContent=def?def.name:"Tower";xp.textContent=amount+" TOWER XP";
+    const pathKeys=["power","range","utility"];
+    const pathDescriptions=["Damage · projectile power","Range · precision · speed","Control · splash · utility"];
     paths.innerHTML=PATH_NAMES.map((path,p)=>{
       const rows=Array.from({length:5},(_,j)=>{
         const tier=j+1,unlocked=tree[p][j],cost=TIER_XP_COST[tier],can=!unlocked&&(tier===1||tree[p][j-1])&&amount>=cost;
-        return "<button class='tier-unlock "+(unlocked?"unlocked":"locked")+"' data-unlock-type='"+type+"' data-unlock-path='"+p+"' data-unlock-tier='"+tier+"' "+(can?"":"disabled")+">"+tier+"<br>"+(unlocked?"✓":"XP "+cost)+"</button>";
+        const label=BRANCH_NAMES[pathKeys[p]][j];
+        return "<button class='tier-unlock "+(unlocked?"unlocked":"locked")+"' data-unlock-type='"+type+"' data-unlock-path='"+p+"' data-unlock-tier='"+tier+"' "+(can?"":"disabled")+" title='"+def.name+" · "+label+"'>"+
+          "<span class='tier-orb'>"+(unlocked?"✓":tier)+"</span><span class='tier-copy'><b>"+label+"</b><small>"+(unlocked?"OWNED":"XP "+cost)+"</small></span></button>";
       }).join("");
-      return "<div class='upgrade-path' style='--path-color:"+PATH_COLORS[p]+"'><div class='upgrade-path-title'><span>"+path+" PATH</span><span>5 TIERS</span></div><div class='tier-row'>"+rows+"</div></div>";
+      const pathIcon=TOWER_LOGOS[type]||"•";
+      return "<section class='upgrade-path-card' style='--path-color:"+PATH_COLORS[p]+"'>"+
+        "<div class='upgrade-card-head'><div class='upgrade-tower-icon' style='--tower-color:"+def.color+"'>"+pathIcon+"</div>"+
+        "<div class='upgrade-card-title'><b>"+def.name+" · "+path+"</b><small>"+pathDescriptions[p]+"</small></div>"+
+        "<span class='upgrade-card-status'>"+(tree[p].filter(Boolean).length===5?"MAX UPGRADES":"5 TIERS")+"</span></div>"+
+        "<div class='tier-row'>"+rows+"</div></section>";
     }).join("");
   }
 
