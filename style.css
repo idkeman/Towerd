@@ -145,3 +145,7 @@ footer { display:flex; justify-content:space-between; color:#58657a; font-size:1
 .tier-unlock.unlocked{border-color:var(--path-color);color:#fff;background:#172131}
 .tier-unlock.locked{opacity:.48}.tier-unlock:disabled{cursor:not-allowed}
 .ability-button{border-color:#4c3d6b;color:#d8b4fe;margin-bottom:7px}
+
+.paragon-panel{margin:7px 0;padding:8px;border:1px solid #8b5cf6;border-radius:9px;background:#120d20;display:grid;gap:5px}
+.paragon-panel b{color:#fef08a;font-size:11px}.paragon-panel span{font-size:10px;color:#c4b5fd}
+.paragon-panel button{font-size:9px}.paragon-feed{display:grid;grid-template-columns:1fr 1fr;gap:4px}.paragon-feed input{min-width:0;background:#0b1220;border:1px solid #334155;color:#fff;border-radius:5px;padding:5px}
