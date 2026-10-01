@@ -1403,7 +1403,6 @@ const UNLOCKS={
   if(clearSaveButton)clearSaveButton.addEventListener("click",clearSave);
   updateSaveButtons();
   document.getElementById("waveButton").onclick=()=>state.started&&!state.waveActive?startWave():null;
-  document.getElementById("upgradeButton").onclick=upgrade;
   document.getElementById("abilityButton").onclick=()=>{const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[]));if(selected.length===1)activateTowerAbility(selected[0]);};
   document.getElementById("selectAllSameButton").onclick=selectAllSameType;
   document.getElementById("replaceButton").onclick=replaceSelectedTowers;
@@ -1468,7 +1467,7 @@ const UNLOCKS={
     }
     document.getElementById("waveValue").textContent=state.wave;document.getElementById("goldValue").textContent=state.gold;document.getElementById("livesValue").textContent=state.lives;updateDifficultyUI();
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
-    const t=selected[0],info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton"),replaceBtn=document.getElementById("replaceButton"),branchBox=document.getElementById("branchControls");
+    const t=selected[0],info=document.getElementById("towerInfo"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton"),replaceBtn=document.getElementById("replaceButton"),branchBox=document.getElementById("branchControls");
     if(t){
       const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;
       state.selectedBuild=t.type;
@@ -1484,8 +1483,6 @@ const UNLOCKS={
         document.getElementById("paragonCreateButton").disabled=!eligible;
         document.getElementById("paragonCreateButton").textContent=eligible?"CREATE PARAGON ($"+PARAGONS[t.type].cost+" + "+PARAGON_XP_COST+" XP)":"PARAGON ACTIVE";
       }
-      const powerEligible=selected.every(x=>!branchLocked(x,0)&&branchLevels(x)[0]<5&&branchPoints(x)<5);
-      const powerCost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.72+branchPoints(x)*.46)),0);
       info.innerHTML=selected.length>1?"<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · Shift-click to exclude individual towers. Two branches may be used; the third then locks.</span>":"<b>"+d.name+" · "+comboKey(t)+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(stats.damage):"—")+" · Range "+Math.floor(stats.range)+" · Kills "+t.kills+"<br><strong>"+ability.name+"</strong>: "+ability.desc+"</span>";
       targetSelect.disabled=selected.length!==1||!d.damage;targetSelect.value=t.targetMode||"furthest";
       const abilityButton=document.getElementById("abilityButton");
@@ -1495,7 +1492,6 @@ const UNLOCKS={
         abilityButton.textContent=mid<1?"⚡":remaining>0?remaining.toFixed(1)+"s":"⚡";
       }
 
-      up.disabled=!powerEligible||!selected.every(x=>isTierUnlocked(x.type,0,branchLevels(x)[0]+1))||state.gold<powerCost;up.firstChild.textContent="▲ ";document.getElementById("upgradeCost").textContent=!powerEligible?"—":"$"+powerCost;
       if(branchBox)branchBox.innerHTML=BRANCHES.map((b,i)=>{
         const lv=levels[i],next=lv+1;
         const locked=selected.some(x=>branchLocked(x,i));
@@ -1507,7 +1503,7 @@ const UNLOCKS={
       }).join("");
       sellBtn.disabled=false;document.getElementById("sellValue").textContent=selected.length>1?"$"+selected.reduce((sum,x)=>sum+Math.floor(x.totalSpent*.68),0):"$"+Math.floor(t.totalSpent*.68);sellBtn.firstChild.textContent="♻ ";selectAllBtn.disabled=false;replaceBtn.disabled=selected.some(x=>x.type===state.selectedBuild);replaceBtn.textContent="↻";
     }else{
-      info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";selectAllBtn.disabled=true;replaceBtn.disabled=true;replaceBtn.textContent="REPLACE SELECTED";document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";if(branchBox)branchBox.innerHTML="";
+      info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";selectAllBtn.disabled=true;replaceBtn.disabled=true;replaceBtn.textContent="REPLACE SELECTED";document.getElementById("sellValue").textContent="$—";if(branchBox)branchBox.innerHTML="";
     }
     const progress=state.spawnTotal?Math.min(1,1-(state.spawnLeft/state.spawnTotal)):(state.waveActive?0:1);document.getElementById("waveProgressBar").style.width=(progress*100)+"%";updateProgressionUI();const wb=document.getElementById("waveButton");wb.textContent=state.waveActive?"WAVE IN PROGRESS":state.wave>=100?"COMPLETE":"START WAVE";wb.disabled=state.waveActive||state.wave>=100;
   }
