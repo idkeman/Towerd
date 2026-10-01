@@ -105,7 +105,11 @@ const UNLOCKS={
   const PROFILE_KEY="towerd-profile-v1";
   let state;
   let saveTimer=0;
-  let profile={level:1,xp:0,totalXp:0,shards:0,unlocked:[]};
+  let profile={level:1,xp:0,totalXp:0,shards:0,unlocked:[],towerXP:{},towerUpgrades:{}};
+  const TIER_XP_COST=[0,25,75,175,350,700];
+  const TIER_NAMES=["","TIER 1","TIER 2","TIER 3","TIER 4","TIER 5"];
+  const PATH_NAMES=["TOP","MIDDLE","BOTTOM"];
+  const PATH_COLORS=["#fb7185","#60a5fa","#a3e635"];
   let offlineReport=null;
 
   function xpNeeded(level){return 100+(level-1)*75;}
@@ -117,7 +121,7 @@ const UNLOCKS={
       const raw=localStorage.getItem(PROFILE_KEY);
       if(raw){
         const p=JSON.parse(raw);
-        profile={level:Math.max(1,Number(p.level)||1),xp:Math.max(0,Number(p.xp)||0),totalXp:Math.max(0,Number(p.totalXp)||0),shards:Math.max(0,Number(p.shards)||0),unlocked:Array.isArray(p.unlocked)?p.unlocked.filter(k=>UNLOCKS[k]):[]};
+        profile={level:Math.max(1,Number(p.level)||1),xp:Math.max(0,Number(p.xp)||0),totalXp:Math.max(0,Number(p.totalXp)||0),shards:Math.max(0,Number(p.shards)||0),unlocked:Array.isArray(p.unlocked)?p.unlocked.filter(k=>UNLOCKS[k]):[],towerXP:(p.towerXP&&typeof p.towerXP==="object")?p.towerXP:{},towerUpgrades:(p.towerUpgrades&&typeof p.towerUpgrades==="object")?p.towerUpgrades:{}};
       }
     }catch(error){console.warn("Towerd profile load failed:",error);}
   }
@@ -433,9 +437,47 @@ const UNLOCKS={
 
   const BRANCHES=[{id:"power",name:"POWER",color:"#fb7185",desc:"Damage, critical hits, and burst"},{id:"range",name:"RANGE",color:"#60a5fa",desc:"Range, projectile speed, and precision"},{id:"utility",name:"UTILITY",color:"#a3e635",desc:"Control, splash, and special effects"}];
   const BRANCH_NAMES={power:["Overcharge","Execution","Annihilation","Ruin","Cataclysm"],range:["Longshot","Vector","Horizon","Rail","Omnipoint"],utility:["Disrupt","Control","Catalyst","Singularity","Paradox"]};
-  function branchLevels(t){const b=Array.isArray(t.branches)?t.branches:[0,0,0];return [Number(b[0])||0,Number(b[1])||0,Number(b[2])||0];}
+  function branchLevels(t){const b=Array.isArray(t.branches)?t.branches:[0,0,0];return [0,1,2].map(i=>Math.max(0,Math.min(5,Number(b[i])||0)));}
   function branchPoints(t){return branchLevels(t).reduce((a,b)=>a+b,0);}
-  function branchLocked(t,index){return branchLevels(t).filter((v,i)=>i!==index&&v>0).length>=2;}
+  function branchLocked(t,index){
+    const levels=branchLevels(t),current=levels[index];
+    if(current<2)return false;
+    return levels.some((v,i)=>i!==index&&v>2);
+  }
+  function canUpgradeBranch(t,index){
+    const levels=branchLevels(t),next=levels[index]+1;
+    if(next>5)return false;
+    if(next>2&&levels.some((v,i)=>i!==index&&v>2))return false;
+    return true;
+  }
+  function canPlaceTier5(type){
+    return state.towers.filter(t=>t.type===type&&branchLevels(t).includes(5)).length===0;
+  }
+  function towerXP(type){return Math.max(0,Number(profile.towerXP?.[type])||0);}
+  function towerUpgradeState(type){
+    if(!profile.towerUpgrades[type])profile.towerUpgrades[type]=[[false,false,false,false,false],[false,false,false,false,false],[false,false,false,false,false]];
+    return profile.towerUpgrades[type];
+  }
+  function isTierUnlocked(type,pathIndex,tier){
+    if(tier<1||tier>5)return false;
+    return !!towerUpgradeState(type)[pathIndex][tier-1];
+  }
+  function unlockTier(type,pathIndex,tier){
+    if(state?.started&&!state.gameOver&&!state.won){toast("UNLOCK UPGRADES FROM THE MENU BETWEEN MATCHES");return false;}
+    const tree=towerUpgradeState(type);
+    if(tier>1&&!tree[pathIndex][tier-2]){toast("UNLOCK TIER "+(tier-1)+" FIRST");return false;}
+    const cost=TIER_XP_COST[tier];
+    if(towerXP(type)<cost){toast(TYPES[type].name+" NEEDS "+cost+" TOWER XP");return false;}
+    profile.towerXP[type]=towerXP(type)-cost;
+    tree[pathIndex][tier-1]=true;
+    saveProfile();renderTowerUpgradeMenu();return true;
+  }
+  function addTowerXP(type,amount){
+    if(!TYPES[type])return;
+    amount=Math.max(0,Math.floor(amount||0));if(!amount)return;
+    profile.towerXP[type]=towerXP(type)+amount;saveProfile();renderTowerUpgradeMenu();
+  }
+
   function comboKey(t){return branchLevels(t).join("-");}
   function comboAbility(t){const [p,r,u]=branchLevels(t),total=p+r+u;if(!total)return {id:"base",name:"Base System",desc:"No special ability yet.",chance:0};const names=[];if(p)names.push(BRANCH_NAMES.power[p-1]);if(r)names.push(BRANCH_NAMES.range[r-1]);if(u)names.push(BRANCH_NAMES.utility[u-1]);const mode=p&&r?"pierce":p&&u?"rupture":r&&u?"control":p?"execute":r?"volley":"nova";const pair=p&&r?"Overdrive":p&&u?"Ruin":r&&u?"Control":names[0];return {id:comboKey(t),name:TYPES[t.type].name+" "+pair+" "+names.join("-"),desc:"Unique combo "+comboKey(t)+" - "+names.join(" + "),chance:Math.min(.36,.08+total*.025),damageMult:.28+p*.08+r*.035+u*.045,radius:22+r*9+u*12,slow:Math.max(.28,.82-u*.09-r*.025),mode,dominant:Math.max(p,r,u)};}
   function towerStats(t){const d=TYPES[t.type],[p,r,u]=branchLevels(t);return {damage:(d.damage||0)*(1+p*.26+u*.07),range:(d.range||0)*(1+r*.12),rate:(d.rate||1)*Math.pow(.91,p)*Math.pow(.94,r)*Math.pow(.88,u),projectile:(d.projectile||0)*(1+r*.16),splash:(d.splash||0)+u*12,slow:Math.max(.28,(d.slow||1)-u*.07),slowTime:(d.slowTime||0)+u*.45,ability:comboAbility(t)};}
