@@ -442,7 +442,7 @@ const UNLOCKS={
       panel.style.transform="translate(-50%,-50%)";
     }
     panel.classList.add(state.uiMode+"-mode");
-    document.getElementById("controlModeLabel").textContent=state.uiMode==="tower"?"TOWER UPGRADES":state.uiMode==="build"?"BUILD MODE":"WAVE SETTINGS";
+    document.getElementById("controlModeLabel").textContent=state.uiMode==="tower"?"TOWER UPGRADES":state.uiMode==="build"?(state.multiPlace?"MULTI-PLACE":"BUILD MODE"):"WAVE SETTINGS";
     document.querySelectorAll(".control-view").forEach(view=>view.classList.remove("active"));
     const target=document.getElementById(state.uiMode==="tower"?"towerSettings":state.uiMode==="build"?"buildSettings":"waveSettings");
     if(target)target.classList.add("active");
@@ -451,7 +451,7 @@ const UNLOCKS={
   function reset(){
     state={started:false,gameOver:false,won:false,wave:0,gold:startingGold(),lives:startingLives(),
       towers:[],traps:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
-      selectedBuild:"dart",selectedTowers:[],uiMode:"wave",difficulty:localStorage.getItem(DIFFICULTY_KEY)||"easy",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
+      selectedBuild:"dart",selectedTowers:[],multiPlace:false,uiMode:"wave",difficulty:localStorage.getItem(DIFFICULTY_KEY)||"easy",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
       speed:1,autoWave:false,betweenTimer:0,time:0,shake:0,paragons:{}};
     updateUI();
     setControlMode("wave");
@@ -667,7 +667,14 @@ const UNLOCKS={
     if(!isBuildable(x,y))return;
     if(PARAGONS[state.selectedBuild]&&paragonState(state.selectedBuild)){toast("THIS PARAGON ALREADY EXISTS");return;}
     const t={type:state.selectedBuild,x,y,level:1,branches:[0,0,0],cooldown:0,abilityCooldown:0,abilityBuffUntil:0,abilityBuff:0,totalSpent:type.cost,kills:0,targetMode:"furthest"};
-    state.gold-=type.cost;state.towers.push(t);state.selectedTower=t;
+    state.gold-=type.cost;state.towers.push(t);
+    if(state.multiPlace){
+      state.selectedTower=null;
+      state.selectedTowers=[];
+      setControlMode("build");
+    }else{
+      state.selectedTower=t;
+    }
     burst(x,y,type.color,12);updateUI();
   }
   function isBuildable(x,y){
@@ -1254,6 +1261,23 @@ const UNLOCKS={
     if(state.autoWave&&!state.waveActive&&state.started&&state.wave<100)state.betweenTimer=.5;
   };
   window.addEventListener("keydown",e=>{
+    const tag=e.target?.tagName?.toLowerCase();
+    const typing=tag==="input"||tag==="textarea"||tag==="select"||e.target?.isContentEditable;
+    if(e.code==="KeyM"&&!typing){
+      e.preventDefault();
+      state.multiPlace=!state.multiPlace;
+      state.selectedTower=null;
+      state.selectedTowers=[];
+      if(state.multiPlace){
+        setControlMode("build");
+        toast("MULTI-PLACE ON  ·  M TO TOGGLE");
+      }else{
+        setControlMode("wave");
+        toast("MULTI-PLACE OFF");
+      }
+      updateUI();
+      return;
+    }
     if(e.key==="1")selectBuild("dart");if(e.key==="2")selectBuild("cannon");if(e.key==="3")selectBuild("frost");
     if(e.code==="Space"){e.preventDefault();if(!state.started)startGame();else if(!state.waveActive)startWave();}
     if(e.key==="Escape"){state.selectedTower=null;state.selectedTowers=[];setControlMode("wave");updateUI();}
