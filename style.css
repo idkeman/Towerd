@@ -270,3 +270,7 @@ footer{display:none}
   #towerUpgradePaths{grid-template-columns:1fr}
   #towerSettings .branch-controls{grid-template-columns:1fr}
 }
+
+.control-panel.wave-mode{width:min(260px,calc(100vw - 28px))}
+.stat span{font-size:13px;line-height:1;text-align:center;color:#dbeafe}
+.stat b{display:block;text-align:center;margin-top:3px}
