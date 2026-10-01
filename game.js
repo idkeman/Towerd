@@ -40,8 +40,7 @@
     chrono:{name:"Chrono",cost:325,range:175,damage:21,rate:1.51,projectile:500,slow:.42,slowTime:2.65,color:"#f0abfc",desc:"Severe slow"},
     gravity:{name:"Gravity",cost:350,range:145,damage:16,rate:1.84,projectile:360,splash:65,slow:.53,slowTime:1.9,color:"#7c3aed",desc:"Group control"},
     meteor:{name:"Meteor",cost:440,range:330,damage:130,rate:4.1,projectile:240,splash:100,color:"#ef4444",desc:"Endgame artillery"},
-    bank:{name:"Gold Mine",cost:225,range:0,damage:0,rate:5,projectile:0,income:20,color:"#fbbf24",desc:"Passively generates gold"},trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes near the tower"},
-    trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes that trigger on enemies"},ember:{name:"Inferno",cost:420,range:135,damage:34,rate:.42,projectile:360,splash:40,color:"#fb5b3b",desc:"Rapid burning area fire"},
+    bank:{name:"Gold Mine",cost:225,range:0,damage:0,rate:5,projectile:0,income:20,color:"#fbbf24",desc:"Passively generates gold"},trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes that trigger on enemies"},ember:{name:"Inferno",cost:420,range:135,damage:34,rate:.42,projectile:360,splash:40,color:"#fb5b3b",desc:"Rapid burning area fire"},
 ballista:{name:"Ballista",cost:390,range:330,damage:145,rate:2.2,projectile:900,color:"#c084fc",desc:"Piercing long-range bolts"},
 warden:{name:"Warden",cost:475,range:155,damage:38,rate:.72,projectile:650,splash:28,color:"#4ade80",desc:"Defensive heavy fire"},
 oracle:{name:"Oracle",cost:500,range:280,damage:75,rate:.8,projectile:750,slow:.65,slowTime:2,color:"#f5d0fe",desc:"Predictive slowing shots"},
@@ -166,7 +165,7 @@ const UNLOCKS={
   const TOWER_LOGOS={
     dart:"•",cannon:"◆",frost:"❄",sniper:"⌁",machine:"≡",flame:"♨",tesla:"ϟ",poison:"☠",
     missile:"▲",railgun:"╋",mortar:"●",boomerang:"◖",laser:"—",plasma:"✦",crystal:"◇",
-    shockwave:"◎",drone:"◆",bunker:"▣",chrono:"◷",gravity:"◉",meteor:"☄",bank:"$",trap:"✹",trap:"✹"
+    shockwave:"◎",drone:"◆",bunker:"▣",chrono:"◷",gravity:"◉",meteor:"☄",bank:"$",trap:"✹"
   };
 
   function renderTowerUpgradeMenu(){
@@ -250,6 +249,7 @@ const UNLOCKS={
         betweenTimer:state.betweenTimer,
         time:state.time,difficulty:state.difficulty||"easy",
         selectedBuild:state.selectedBuild,
+        multiPlace:!!state.multiPlace,
         towers:state.towers.map(t=>({
           type:t.type,x:t.x,y:t.y,level:t.level,branches:branchLevels(t),cooldown:t.cooldown,abilityCooldown:t.abilityCooldown||0,abilityBuffUntil:t.abilityBuffUntil||0,abilityBuff:t.abilityBuff||0,
           totalSpent:t.totalSpent,kills:t.kills,targetMode:t.targetMode||"furthest"
@@ -294,7 +294,7 @@ const UNLOCKS={
         towers:Array.isArray(save.towers)?save.towers:[],
         enemies:Array.isArray(save.enemies)?save.enemies:[],
         shots:[],particles:[],texts:[],selectedTower:null,
-        selectedBuild:save.selectedBuild||"dart",selectedTowers:[],
+        selectedBuild:save.selectedBuild||"dart",selectedTowers:[],multiPlace:!!save.multiPlace,
         traps:Array.isArray(save.traps)?save.traps:[],paragons:save.paragons&&typeof save.paragons==="object"?save.paragons:{},
         waveActive:!!save.waveActive,spawnLeft:Number(save.spawnLeft)||0,
         spawnTimer:Number(save.spawnTimer)||0,spawnTotal:Number(save.spawnTotal)||0,
@@ -1280,7 +1280,7 @@ const UNLOCKS={
     }
     if(e.key==="1")selectBuild("dart");if(e.key==="2")selectBuild("cannon");if(e.key==="3")selectBuild("frost");
     if(e.code==="Space"){e.preventDefault();if(!state.started)startGame();else if(!state.waveActive)startWave();}
-    if(e.key==="Escape"){state.selectedTower=null;state.selectedTowers=[];setControlMode("wave");updateUI();}
+    if(e.key==="Escape"){state.selectedTower=null;state.selectedTowers=[];state.multiPlace=false;setControlMode("wave");updateUI();}
     if(e.key.toLowerCase()==="r"&&state.gameOver){reset();startGame();}
   });
   function selectBuild(type){state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===type));}
