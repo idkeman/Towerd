@@ -239,6 +239,7 @@ const UNLOCKS={
           type:t.type,x:t.x,y:t.y,level:t.level,branches:branchLevels(t),cooldown:t.cooldown,abilityCooldown:t.abilityCooldown||0,abilityBuffUntil:t.abilityBuffUntil||0,abilityBuff:t.abilityBuff||0,
           totalSpent:t.totalSpent,kills:t.kills,targetMode:t.targetMode||"furthest"
         })),
+        paragons:Object.fromEntries(Object.entries(state.paragons||{}).map(([k,p])=>[k,{...p}])),
         traps:state.traps.filter(t=>!t.dead).map(t=>({
           x:t.x,y:t.y,damage:t.damage,life:t.life,slow:t.slow,slowTime:t.slowTime,towerType:t.towerType
         })),
@@ -279,7 +280,7 @@ const UNLOCKS={
         enemies:Array.isArray(save.enemies)?save.enemies:[],
         shots:[],particles:[],texts:[],selectedTower:null,
         selectedBuild:save.selectedBuild||"dart",selectedTowers:[],
-        traps:Array.isArray(save.traps)?save.traps:[],
+        traps:Array.isArray(save.traps)?save.traps:[],paragons:save.paragons&&typeof save.paragons==="object"?save.paragons:{},
         waveActive:!!save.waveActive,spawnLeft:Number(save.spawnLeft)||0,
         spawnTimer:Number(save.spawnTimer)||0,spawnTotal:Number(save.spawnTotal)||0,
         speed:Number(save.speed)||1,autoWave:!!save.autoWave,difficulty:save.difficulty||localStorage.getItem(DIFFICULTY_KEY)||"easy",
@@ -340,7 +341,7 @@ const UNLOCKS={
     state={started:false,gameOver:false,won:false,wave:0,gold:startingGold(),lives:startingLives(),
       towers:[],traps:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
       selectedBuild:"dart",selectedTowers:[],difficulty:localStorage.getItem(DIFFICULTY_KEY)||"easy",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
-      speed:1,autoWave:false,betweenTimer:0,time:0,shake:0};
+      speed:1,autoWave:false,betweenTimer:0,time:0,shake:0,paragons:{}};
     updateUI();
     updateSaveButtons();
   }
@@ -553,6 +554,7 @@ const UNLOCKS={
     const type=TYPES[state.selectedBuild];
     if(state.gold<type.cost){toast("NOT ENOUGH GOLD");return;}
     if(!isBuildable(x,y))return;
+    if(PARAGONS[state.selectedBuild]&&paragonState(state.selectedBuild)){toast("THIS PARAGON ALREADY EXISTS");return;}
     const t={type:state.selectedBuild,x,y,level:1,branches:[0,0,0],cooldown:0,abilityCooldown:0,abilityBuffUntil:0,abilityBuff:0,totalSpent:type.cost,kills:0,targetMode:"furthest"};
     state.gold-=type.cost;state.towers.push(t);state.selectedTower=t;
     burst(x,y,type.color,12);updateUI();
@@ -824,6 +826,51 @@ const UNLOCKS={
       ctx.fillStyle="rgba(148,163,184,.55)";ctx.fillRect(x-3,y-3,6,6);
     }
   }
+  const PARAGONS={
+    dart:{name:"Apex Dartstorm",cost:2500,color:"#fef08a",damage:900,range:420,rate:.12,splash:70,projectile:1500},
+    cannon:{name:"Worldbreaker Cannon",cost:3000,color:"#fb923c",damage:2200,range:360,rate:1.2,splash:180,projectile:650},
+    sniper:{name:"Eclipse Marksman",cost:3500,color:"#e0f2fe",damage:4200,range:560,rate:1.9,projectile:1800},
+    missile:{name:"Armageddon Array",cost:4500,color:"#f97316",damage:3600,range:460,rate:1.5,splash:240,projectile:520},
+    laser:{name:"Helios Beam",cost:4200,color:"#fb7185",damage:1250,range:440,rate:.18,projectile:2200},
+    tesla:{name:"Storm Singularity",cost:4000,color:"#c084fc",damage:1600,range:390,rate:.28,projectile:1900,splash:130}
+  };
+  const PARAGON_TYPES=Object.keys(PARAGONS);
+  function allTier5Unlocked(type){return [0,1,2].every(p=>isTierUnlocked(type,p,5));}
+  function paragonState(type){return state.paragons?.[type]||null;}
+  function paragonDegree(type){
+    const p=paragonState(type);if(!p)return 0;
+    return Math.max(1,Math.min(100,1+Math.floor((p.sacrificeValue+p.extraCash*.55)/1000)));
+  }
+  function paragonStats(t){
+    const base=PARAGONS[t.type],degree=paragonDegree(t.type);
+    const scale=1+degree*.42;
+    return {damage:base.damage*scale,range:base.range*(1+degree*.025),rate:base.rate/Math.max(.35,1+degree*.015),splash:base.splash+degree*4,projectile:base.projectile*(1+degree*.02),degree};
+  }
+  function canCreateParagon(type){
+    return PARAGONS[type]&&allTier5Unlocked(type)&&!paragonState(type)&&state.towers.some(t=>t.type===type&&branchLevels(t).includes(5));
+  }
+  function createParagon(type,extraCash=0){
+    if(!canCreateParagon(type)){toast("THIS TOWER IS NOT READY FOR A PARAGON");return false;}
+    const sacrifices=state.towers.filter(t=>t.type===type&&branchLevels(t).includes(5));
+    if(!sacrifices.length)return false;
+    const required=PARAGONS[type].cost;
+    if(state.gold<required+extraCash){toast("NEED $"+(required+extraCash)+" FOR THE PARAGON SACRIFICE");return false;}
+    state.gold-=required+extraCash;
+    const value=sacrifices.reduce((sum,t)=>sum+t.totalSpent,0);
+    const first=sacrifices[0];
+    state.towers=state.towers.filter(t=>!sacrifices.includes(t));
+    state.paragons=state.paragons||{};
+    state.paragons[type]={type, x:first.x,y:first.y,sacrificeValue:value,extraCash,createdAt:state.time};
+    state.selectedTower=state.paragons[type];state.selectedTowers=[];
+    burst(first.x,first.y,PARAGONS[type].color,80);state.shake=18;
+    toast(PARAGONS[type].name+" CREATED · DEGREE "+paragonDegree(type));
+    updateUI();return true;
+  }
+  function feedParagon(type,cash){
+    const p=paragonState(type);if(!p||cash<=0||state.gold<cash)return false;
+    state.gold-=cash;p.extraCash+=cash;burst(p.x,p.y,PARAGONS[type].color,20);toast("PARAGON FED · DEGREE "+paragonDegree(type));updateUI();return true;
+  }
+
   const TOWER_LOGOS={
     dart:"•",cannon:"◆",frost:"❄",sniper:"⌁",machine:"≡",flame:"♨",tesla:"ϟ",poison:"☠",
     missile:"▲",railgun:"╋",mortar:"●",boomerang:"◖",laser:"—",plasma:"✦",crystal:"◇",
