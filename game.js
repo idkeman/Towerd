@@ -360,36 +360,71 @@ const UNLOCKS={
     const handle=panel?.querySelector(".control-modebar");
     if(!panel||!handle||handle.dataset.dragReady)return;
     handle.dataset.dragReady="1";
-    let dragging=false,startX=0,startY=0,startLeft=0,startTop=0;
-    handle.addEventListener("pointerdown",event=>{
-      if(!panel.classList.contains("tower-mode")||event.target.closest("button"))return;
-      dragging=true;
+
+    let dragging=false;
+    let pointerId=null;
+    let startX=0,startY=0,startLeft=0,startTop=0;
+
+    const beginDrag=event=>{
+      if(!panel.classList.contains("tower-mode"))return;
+      if(event.target.closest("button"))return;
+
+      const point=event.touches?.[0]||event;
       const rect=panel.getBoundingClientRect();
-      startX=event.clientX;startY=event.clientY;startLeft=rect.left;startTop=rect.top;
-      panel.classList.add("dragging");
-      handle.setPointerCapture?.(event.pointerId);
-      event.preventDefault();
-    });
-    handle.addEventListener("pointermove",event=>{
-      if(!dragging)return;
-      const maxLeft=Math.max(0,window.innerWidth-panel.offsetWidth);
-      const maxTop=Math.max(0,window.innerHeight-panel.offsetHeight);
-      const left=Math.max(0,Math.min(maxLeft,startLeft+event.clientX-startX));
-      const top=Math.max(0,Math.min(maxTop,startTop+event.clientY-startY));
-      panel.style.left=left+"px";
-      panel.style.top=top+"px";
+
+      dragging=true;
+      pointerId=event.pointerId??null;
+      startX=point.clientX;
+      startY=point.clientY;
+      startLeft=rect.left;
+      startTop=rect.top;
+
+      panel.style.left=startLeft+"px";
+      panel.style.top=startTop+"px";
       panel.style.right="auto";
       panel.style.bottom="auto";
       panel.style.transform="none";
-    });
-    const stop=event=>{
+      panel.classList.add("dragging");
+
+      event.preventDefault();
+    };
+
+    const moveDrag=event=>{
+      if(!dragging)return;
+      if(pointerId!==null&&event.pointerId!==undefined&&event.pointerId!==pointerId)return;
+
+      const point=event.touches?.[0]||event;
+      const maxLeft=Math.max(0,window.innerWidth-panel.offsetWidth);
+      const maxTop=Math.max(0,window.innerHeight-panel.offsetHeight);
+      const left=Math.max(0,Math.min(maxLeft,startLeft+(point.clientX-startX)));
+      const top=Math.max(0,Math.min(maxTop,startTop+(point.clientY-startY)));
+
+      panel.style.left=left+"px";
+      panel.style.top=top+"px";
+      event.preventDefault?.();
+    };
+
+    const endDrag=()=>{
       if(!dragging)return;
       dragging=false;
+      pointerId=null;
       panel.classList.remove("dragging");
-      handle.releasePointerCapture?.(event.pointerId);
     };
-    handle.addEventListener("pointerup",stop);
-    handle.addEventListener("pointercancel",stop);
+
+    handle.addEventListener("pointerdown",beginDrag,{passive:false});
+    document.addEventListener("pointermove",moveDrag,{passive:false});
+    document.addEventListener("pointerup",endDrag);
+    document.addEventListener("pointercancel",endDrag);
+
+    /* Mouse fallback for browsers where pointer events are intercepted. */
+    handle.addEventListener("mousedown",event=>{
+      if(event.button!==0)return;
+      beginDrag(event);
+    });
+    document.addEventListener("mousemove",event=>{
+      if(dragging&&pointerId===null)moveDrag(event);
+    });
+    document.addEventListener("mouseup",endDrag);
   }
 
   function setControlMode(mode){
