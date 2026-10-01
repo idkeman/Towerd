@@ -352,6 +352,9 @@ const UNLOCKS={
     if(clear)clear.disabled=!exists;
   }
 
+  const BRANCHES=[{id:"power",name:"POWER",color:"#fb7185",desc:"Damage, critical hits, and burst"},{id:"range",name:"RANGE",color:"#60a5fa",desc:"Range, projectile speed, and precision"},{id:"utility",name:"UTILITY",color:"#a3e635",desc:"Control, splash, and special effects"}];
+  const BRANCH_NAMES={power:["Overcharge","Execution","Annihilation","Ruin","Cataclysm"],range:["Longshot","Vector","Horizon","Rail","Omnipoint"],utility:["Disrupt","Control","Catalyst","Singularity","Paradox"]};
+
   function reset(){
     state={started:false,gameOver:false,won:false,wave:0,gold:startingGold(),lives:startingLives(),
       towers:[],traps:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
@@ -465,8 +468,7 @@ const UNLOCKS={
     updateUI();
   }
 
-  const BRANCHES=[{id:"power",name:"POWER",color:"#fb7185",desc:"Damage, critical hits, and burst"},{id:"range",name:"RANGE",color:"#60a5fa",desc:"Range, projectile speed, and precision"},{id:"utility",name:"UTILITY",color:"#a3e635",desc:"Control, splash, and special effects"}];
-  const BRANCH_NAMES={power:["Overcharge","Execution","Annihilation","Ruin","Cataclysm"],range:["Longshot","Vector","Horizon","Rail","Omnipoint"],utility:["Disrupt","Control","Catalyst","Singularity","Paradox"]};
+
   function branchLevels(t){const b=Array.isArray(t.branches)?t.branches:[0,0,0];return [0,1,2].map(i=>Math.max(0,Math.min(5,Number(b[i])||0)));}
   function branchPoints(t){return branchLevels(t).reduce((a,b)=>a+b,0);}
   function branchLocked(t,index){
