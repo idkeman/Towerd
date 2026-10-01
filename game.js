@@ -40,7 +40,7 @@
     chrono:{name:"Chrono",cost:325,range:175,damage:21,rate:1.51,projectile:500,slow:.42,slowTime:2.65,color:"#f0abfc",desc:"Severe slow"},
     gravity:{name:"Gravity",cost:350,range:145,damage:16,rate:1.84,projectile:360,splash:65,slow:.53,slowTime:1.9,color:"#7c3aed",desc:"Group control"},
     meteor:{name:"Meteor",cost:440,range:330,damage:130,rate:4.1,projectile:240,splash:100,color:"#ef4444",desc:"Endgame artillery"},
-    bank:{name:"Gold Mine",cost:225,range:0,damage:0,rate:5,projectile:0,income:20,color:"#fbbf24",desc:"Passively generates gold"},trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes that trigger on enemies"},ember:{name:"Inferno",cost:420,range:135,damage:34,rate:.42,projectile:360,splash:40,color:"#fb5b3b",desc:"Rapid burning area fire"},
+    bank:{name:"Gold Mine",cost:225,range:0,damage:0,rate:5,projectile:0,income:20,color:"#fbbf24",desc:"Generates gold and earns Tower XP from its payouts"},trap:{name:"Spike Trap",cost:210,range:135,damage:72,rate:2.8,projectile:0,trapLife:18,slow:.7,slowTime:1.6,color:"#fb7185",desc:"Plants ground spikes that trigger on enemies"},ember:{name:"Inferno",cost:420,range:135,damage:34,rate:.42,projectile:360,splash:40,color:"#fb5b3b",desc:"Rapid burning area fire"},
 ballista:{name:"Ballista",cost:390,range:330,damage:145,rate:2.2,projectile:900,color:"#c084fc",desc:"Piercing long-range bolts"},
 warden:{name:"Warden",cost:475,range:155,damage:38,rate:.72,projectile:650,splash:28,color:"#4ade80",desc:"Defensive heavy fire"},
 oracle:{name:"Oracle",cost:500,range:280,damage:75,rate:.8,projectile:750,slow:.65,slowTime:2,color:"#f5d0fe",desc:"Predictive slowing shots"},
@@ -105,7 +105,7 @@ const UNLOCKS={
   const CONTROL_PANEL_POSITION_KEY="towerd-control-panel-position-v1";
   let state;
   let saveTimer=0;
-  let profile={level:1,xp:0,totalXp:0,shards:0,unlocked:[],towerXP:{},towerUpgrades:{}};
+  let profile={level:1,xp:0,totalXp:0,shards:0,unlocked:[],towerXP:{},towerXPCarry:{},towerUpgrades:{}};
   const TIER_XP_COST=[0,25,75,175,350,700];
   const TIER_NAMES=["","TIER 1","TIER 2","TIER 3","TIER 4","TIER 5"];
   const PATH_NAMES=["TOP","MIDDLE","BOTTOM"];
@@ -121,7 +121,7 @@ const UNLOCKS={
       const raw=localStorage.getItem(PROFILE_KEY);
       if(raw){
         const p=JSON.parse(raw);
-        profile={level:Math.max(1,Number(p.level)||1),xp:Math.max(0,Number(p.xp)||0),totalXp:Math.max(0,Number(p.totalXp)||0),shards:Math.max(0,Number(p.shards)||0),unlocked:Array.isArray(p.unlocked)?p.unlocked.filter(k=>UNLOCKS[k]):[],towerXP:(p.towerXP&&typeof p.towerXP==="object")?p.towerXP:{},towerUpgrades:(p.towerUpgrades&&typeof p.towerUpgrades==="object")?p.towerUpgrades:{}};
+        profile={level:Math.max(1,Number(p.level)||1),xp:Math.max(0,Number(p.xp)||0),totalXp:Math.max(0,Number(p.totalXp)||0),shards:Math.max(0,Number(p.shards)||0),unlocked:Array.isArray(p.unlocked)?p.unlocked.filter(k=>UNLOCKS[k]):[],towerXP:(p.towerXP&&typeof p.towerXP==="object")?p.towerXP:{},towerXPCarry:(p.towerXPCarry&&typeof p.towerXPCarry==="object")?p.towerXPCarry:{},towerUpgrades:(p.towerUpgrades&&typeof p.towerUpgrades==="object")?p.towerUpgrades:{}};
       }
     }catch(error){console.warn("Towerd profile load failed:",error);}
   }
@@ -175,18 +175,30 @@ const UNLOCKS={
     const type=state?.selectedBuild||"dart",def=TYPES[type],amount=towerXP(type),tree=towerUpgradeState(type);
     name.textContent=def?def.name:"Tower";xp.textContent=amount+" TOWER XP";
     const pathKeys=["power","range","utility"];
-    const pathDescriptions=["Damage · projectile power","Range · precision · speed","Control · splash · utility"];
+    const pathDescriptions=type==="bank"
+      ?["Payout · vault growth","Cash flow · payout speed","Bonuses · lucky payouts"]
+      :["Damage · projectile power","Range · precision · speed","Control · splash · utility"];
+    const pathLabels=type==="bank"
+      ?["VAULT","CASH FLOW","PROSPECTING"]
+      :PATH_NAMES;
+    const tierNames=type==="bank"
+      ?[
+        ["Bigger Vault","Rich Veins","Deep Drill","Gold Refinery","Motherlode"],
+        ["Fast Payout","Market Timing","Compound Interest","Bull Market","Golden Hour"],
+        ["Prospector","Trade Route","Secure Transport","Tax Haven","Gold Empire"]
+      ]
+      :BRANCH_NAMES;
     paths.innerHTML=PATH_NAMES.map((path,p)=>{
       const rows=Array.from({length:5},(_,j)=>{
         const tier=j+1,unlocked=tree[p][j],cost=TIER_XP_COST[tier],can=!unlocked&&(tier===1||tree[p][j-1])&&amount>=cost;
-        const label=BRANCH_NAMES[pathKeys[p]][j];
+        const label=type==="bank"?tierNames[pathKeys[p]==="power"?0:pathKeys[p]==="range"?1:2][j]:BRANCH_NAMES[pathKeys[p]][j];
         return "<button class='tier-unlock "+(unlocked?"unlocked":"locked")+"' data-unlock-type='"+type+"' data-unlock-path='"+p+"' data-unlock-tier='"+tier+"' "+(can?"":"disabled")+" title='"+def.name+" · "+label+"'>"+
           "<span class='tier-orb'>"+(unlocked?"✓":tier)+"</span><span class='tier-copy'><b>"+label+"</b><small>"+(unlocked?"OWNED":"XP "+cost)+"</small></span></button>";
       }).join("");
       const pathIcon=TOWER_LOGOS[type]||"•";
       return "<section class='upgrade-path-card' style='--path-color:"+PATH_COLORS[p]+"'>"+
         "<div class='upgrade-card-head'><div class='upgrade-tower-icon' style='--tower-color:"+def.color+"'>"+pathIcon+"</div>"+
-        "<div class='upgrade-card-title'><b>"+def.name+" · "+path+"</b><small>"+pathDescriptions[p]+"</small></div>"+
+        "<div class='upgrade-card-title'><b>"+def.name+" · "+pathLabels[p]+"</b><small>"+pathDescriptions[p]+"</small></div>"+
         "<span class='upgrade-card-status'>"+(tree[p].filter(Boolean).length===5?"MAX UPGRADES":"5 TIERS")+"</span></div>"+
         "<div class='tier-row'>"+rows+"</div></section>";
     }).join("");
@@ -209,9 +221,13 @@ const UNLOCKS={
     const seconds=Math.min(away,profileOfflineCap());
     const mineCount=state.towers.filter(t=>t.type==="bank").length;
     const mineGold=state.towers.filter(t=>t.type==="bank").reduce((sum,t)=>{
-      const def=TYPES.bank;
-      const level=Math.max(1,Number(t.level)||1);
-      return sum+(seconds/def.rate)*def.income*(1+(level-1)*.25);
+      const def=TYPES.bank,levels=branchLevels(t),top=levels[0],mid=levels[1],bot=levels[2];
+      const payout=def.income*(1+top*.32+bot*.14);
+      const interval=def.rate*Math.pow(.89,mid);
+      const payouts=seconds/Math.max(.8,interval);
+      const bonusChance=Math.min(.45,bot*.08);
+      const expectedBonus=1+bonusChance*1.5;
+      return sum+payout*payouts*expectedBonus;
     },0);
     const passive=seconds/90;
     const income=Math.floor((mineGold+passive)*(1+(profile.level-1)*.05));
@@ -224,6 +240,7 @@ const UNLOCKS={
       if(state.wave>=100)state.won=true;
     }
     if(income>0)state.gold+=income;
+    if(mineGold>0)addTowerXPFromGold("bank",mineGold);
     addXP(xp);
     offlineReport={seconds,income,xp,simulatedWaves,mineCount};
   }
@@ -651,6 +668,15 @@ const UNLOCKS={
     amount=Math.max(0,Math.floor(amount||0));if(!amount)return;
     profile.towerXP[type]=towerXP(type)+amount;saveProfile();renderTowerUpgradeMenu();
   }
+  function addTowerXPFromGold(type,gold){
+    if(!TYPES[type]||gold<=0)return;
+    const key=type;
+    const carry=Math.max(0,Number(profile.towerXPCarry?.[key])||0)+gold;
+    const earned=Math.floor(carry/100);
+    profile.towerXPCarry[key]=carry%100;
+    if(earned>0)addTowerXP(type,earned);
+    else saveProfile();
+  }
 
   function comboKey(t){return branchLevels(t).join("-");}
   function comboAbility(t){
@@ -662,6 +688,21 @@ const UNLOCKS={
   function towerStats(t){
     const d=TYPES[t.type],[top,mid,bot]=branchLevels(t);
     const ability=comboAbility(t);
+    if(t.type==="bank"){
+      return {
+        damage:0,
+        range:0,
+        rate:(d.rate||1)*Math.pow(.89,mid),
+        projectile:0,
+        splash:0,
+        slow:1,
+        slowTime:0,
+        income:(d.income||0)*(1+top*.32+bot*.14),
+        bonusChance:Math.min(.45,bot*.08),
+        bonusMultiplier:bot>=4?2.5:2,
+        ability
+      };
+    }
     return {
       damage:(d.damage||0)*(1+top*.22+bot*.06),
       range:(d.range||0)*(1+top*.06+bot*.08),
@@ -694,6 +735,16 @@ const UNLOCKS={
     const [,mid]=branchLevels(t);if(mid<1){toast("MIDDLE PATH REQUIRED");return;}
     const now=state.time;if((t.abilityCooldown||0)>now){toast("ABILITY COOLDOWN");return;}
     const duration=2.5+mid*1.5;t.abilityCooldown=now+14-mid*1.25;
+    if(t.type==="bank"){
+      const base=Math.max(1,Math.floor(towerStats(t).income*(4+mid*2)));
+      const cash=Math.floor(base*(1+mid*.35));
+      state.gold+=cash;
+      addTowerXPFromGold(t.type,cash);
+      floatText(t.x,t.y-30,"MARKET +$"+cash);
+      burst(t.x,t.y,BRANCHES[1].color,18+mid*4);
+      updateUI();
+      return;
+    }
     if(mid===1){
       t.abilityBuffUntil=now+duration;t.abilityBuff=.48;
       floatText(t.x,t.y-30,"OVERDRIVE");burst(t.x,t.y,BRANCHES[1].color,18);
@@ -949,11 +1000,15 @@ const UNLOCKS={
       const def=TYPES[t.type];
       if(def.income){
         if(t.cooldown<=0){
-          const amount=Math.floor(def.income*(1+(t.level-1)*.25+branchLevels(t)[0]*.2+branchLevels(t)[2]*.1));
-          state.gold+=amount;
-          t.cooldown=def.rate*Math.pow(.94,t.level-1);
-          floatText(t.x,t.y-24,"+$"+amount);
-          burst(t.x,t.y,def.color,5);
+          const stats=towerStats(t);
+          const amount=Math.floor(stats.income);
+          let payout=amount;
+          if(stats.bonusChance>0&&Math.random()<stats.bonusChance)payout=Math.floor(amount*stats.bonusMultiplier);
+          state.gold+=payout;
+          t.cooldown=stats.rate;
+          addTowerXPFromGold(t.type,payout);
+          floatText(t.x,t.y-24,"+$"+payout);
+          burst(t.x,t.y,def.color,payout>amount?9:5);
         }
       }else if(t.type==="trap"){
         if(t.cooldown<=0)placeTrap(t);
