@@ -936,7 +936,6 @@ const UNLOCKS={
     if(e.key.toLowerCase()==="r"&&state.gameOver){reset();startGame();}
   });
   function selectBuild(type){state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===type));}
-  function upgrade(){upgradeBranchSelection(0);}
   function selectAllSameType(){
     const t=state.selectedTower||state.selectedTowers?.[0];
     if(!t)return;
