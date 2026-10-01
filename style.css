@@ -274,3 +274,162 @@ footer{display:none}
 .control-panel.wave-mode{width:min(260px,calc(100vw - 28px))}
 .stat span{font-size:13px;line-height:1;text-align:center;color:#dbeafe}
 .stat b{display:block;text-align:center;margin-top:3px}
+
+/* Compact central HUD card — intentionally contained within the playfield. */
+#startOverlay:not(.hidden) + #controlPanel{display:none}
+.control-panel{
+  position:absolute;
+  top:50%;
+  left:50%;
+  right:auto;
+  bottom:auto;
+  inset:auto;
+  transform:translate(-50%,-50%);
+  width:min(260px,calc(100vw - 24px));
+  max-height:min(78vh,430px);
+  overflow:hidden;
+  padding:7px;
+  border-radius:10px;
+  background:rgba(8,14,24,.94);
+  border:1px solid rgba(148,163,184,.38);
+  box-shadow:0 14px 36px rgba(0,0,0,.48),0 0 0 1px rgba(255,255,255,.025) inset;
+  backdrop-filter:blur(9px);
+}
+.control-modebar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  min-height:28px;
+  margin:0 0 5px;
+}
+.control-modebar #controlModeLabel{font-size:14px;line-height:1}
+.control-mode-actions{display:flex;gap:4px}
+.control-mode-actions button{
+  width:30px;
+  min-width:30px;
+  height:28px;
+  min-height:28px;
+  padding:2px;
+  border-radius:6px;
+}
+.control-view{width:100%;max-height:none;overflow:hidden}
+
+/* Wave view: compact, readable, never stretched. */
+.control-panel.wave-mode{width:min(260px,calc(100vw - 24px))}
+#waveSettings{
+  display:grid;
+  grid-template-columns:1fr 34px 34px 34px;
+  gap:4px;
+  align-items:center;
+}
+#waveSettings .wave-controls{display:flex;gap:4px}
+#waveSettings .wave-controls #waveButton{width:34px;min-width:34px}
+#waveSettings .wave-controls #speedButton{width:34px;min-width:34px}
+#waveSettings .auto-wave,
+#waveSettings .save-controls button{
+  width:34px;
+  min-width:34px;
+  height:32px;
+  min-height:32px;
+  padding:2px;
+}
+#waveSettings .save-controls{display:flex;gap:4px}
+#waveSettings .wave-progress{grid-column:1/-1;height:3px;margin:2px 0 0}
+#waveSettings .tip{display:none}
+
+/* Build view: a small sign board inside the same card. */
+.control-panel.build-mode{width:min(300px,calc(100vw - 24px))}
+#buildSettings #towerMenu{
+  display:grid;
+  grid-template-columns:repeat(5,1fr);
+  gap:4px;
+  width:100%;
+  max-height:330px;
+  overflow-y:auto;
+  overflow-x:hidden;
+  padding:1px;
+}
+#buildSettings .tower-card{
+  width:auto;
+  min-width:0;
+  height:50px;
+  min-height:50px;
+  margin:0;
+  padding:3px;
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:1px;
+  border-radius:7px;
+  text-align:center;
+}
+#buildSettings .tower-card .tower-icon{display:none}
+#buildSettings .tower-sign{
+  font-size:18px;
+  line-height:20px;
+}
+#buildSettings .tower-price{
+  font-size:8px;
+  line-height:10px;
+}
+#buildSettings .locked-tower .tower-sign{font-size:15px}
+#buildSettings .locked-tower .tower-price{font-size:8px}
+#buildSettings .progression-panel{display:none}
+
+/* Selected tower view: compact scrollable inspection card. */
+.control-panel.tower-mode{
+  left:50%;
+  right:auto;
+  top:50%;
+  bottom:auto;
+  transform:translate(-50%,-50%);
+  width:min(310px,calc(100vw - 24px));
+  max-height:min(78vh,500px);
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+.control-panel.tower-mode .control-modebar{
+  position:sticky;
+  top:-7px;
+  z-index:3;
+  margin:-7px -7px 5px;
+  padding:7px;
+  background:rgba(8,14,24,.97);
+}
+#towerSettings{display:block}
+#towerSettings .tower-upgrade-menu{padding:5px}
+#towerSettings .tower-xp-head{font-size:10px}
+#towerUpgradePaths{grid-template-columns:repeat(3,1fr);gap:4px}
+#towerSettings .upgrade-path-card{min-height:58px;padding:5px!important}
+#towerSettings .tier-row{gap:2px!important}
+#towerSettings .tier-unlock{padding:3px!important;font-size:8px!important}
+#towerSettings .tower-info{padding:5px;font-size:9px}
+#towerSettings .branch-controls{grid-template-columns:repeat(3,1fr);gap:4px}
+#towerSettings .branch-button{min-height:38px;padding:3px;font-size:8px}
+#towerSettings .branch-button span{display:none}
+#towerSettings .target-control{display:flex;align-items:center;gap:5px;padding:4px;margin-top:4px}
+#towerSettings .target-control label{margin:0}
+#towerSettings .target-control select{flex:1;height:28px;font-size:10px}
+#towerSettings .divider{display:none}
+#towerSettings .paragon-panel{padding:5px}
+#towerSettings .paragon-feed{gap:4px}
+#towerSettings .paragon-feed input{width:70px;height:28px}
+#towerSettings .paragon-feed button{height:28px;min-width:30px}
+
+/* Keep the playfield truly full-screen. */
+html,body,#app,.game-shell,.canvas-wrap{width:100%;height:100%;min-height:100%;max-width:none}
+#app{padding:0;margin:0}
+.topbar{position:absolute;z-index:20;top:8px;left:10px;right:10px;margin:0}
+.game-shell{display:block}
+.canvas-wrap{border:0;border-radius:0;box-shadow:none}
+canvas{width:100%;height:100%;aspect-ratio:auto}
+
+@media(max-width:600px){
+  .control-panel,
+  .control-panel.wave-mode{width:min(250px,calc(100vw - 18px))}
+  .control-panel.build-mode{width:min(270px,calc(100vw - 18px))}
+  .control-panel.tower-mode{width:min(285px,calc(100vw - 18px))}
+  #buildSettings #towerMenu{grid-template-columns:repeat(5,1fr);max-height:300px}
+}
