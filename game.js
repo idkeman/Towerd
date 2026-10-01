@@ -1075,7 +1075,7 @@ const UNLOCKS={
       const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;renderTowerUpgradeMenu();
       const powerEligible=selected.every(x=>!branchLocked(x,0)&&branchLevels(x)[0]<5&&branchPoints(x)<5);
       const powerCost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.72+branchPoints(x)*.46)),0);
-      info.innerHTML=selected.length>1?"<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · Shift-click to exclude individual towers. Two branches may be used; the third then locks.</span>":"<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(stats.damage):"—")+" · Range "+Math.floor(stats.range)+" · Kills "+t.kills+"<br><strong>"+ability.name+"</strong>: "+ability.desc+"</span>";
+      info.innerHTML=selected.length>1?"<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · Shift-click to exclude individual towers. Two branches may be used; the third then locks.</span>":"<b>"+d.name+" · "+comboKey(t)+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(stats.damage):"—")+" · Range "+Math.floor(stats.range)+" · Kills "+t.kills+"<br><strong>"+ability.name+"</strong>: "+ability.desc+"</span>";
       targetSelect.disabled=selected.length!==1||!d.damage;targetSelect.value=t.targetMode||"furthest";
       const abilityButton=document.getElementById("abilityButton");
       if(abilityButton){
