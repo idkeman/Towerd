@@ -488,6 +488,10 @@ const UNLOCKS={
   }
 
   function setControlMode(mode){
+    if(state.multiPlace&&mode!=="build"){
+      state.multiPlace=false;
+      toast("MULTI-PLACE OFF");
+    }
     const panel=document.getElementById("controlPanel");
     if(!panel)return;
     const allowed=["wave","build","tower"];
