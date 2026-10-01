@@ -401,6 +401,8 @@ const UNLOCKS={
 
       panel.style.left=left+"px";
       panel.style.top=top+"px";
+      panel.dataset.dragLeft=left;
+      panel.dataset.dragTop=top;
       event.preventDefault?.();
     };
 
@@ -432,8 +434,23 @@ const UNLOCKS={
     if(!panel)return;
     const allowed=["wave","build","tower"];
     state.uiMode=allowed.includes(mode)?mode:"wave";
-    if(state.uiMode!=="tower"){panel.style.left="";panel.style.top="";panel.style.right="";panel.style.bottom="";panel.style.transform="";}
     panel.classList.remove("wave-mode","build-mode","tower-mode");
+    panel.classList.add(state.uiMode+"-mode");
+    const savedLeft=panel.dataset.dragLeft;
+    const savedTop=panel.dataset.dragTop;
+    if(savedLeft!==undefined&&savedTop!==undefined){
+      panel.style.left=savedLeft+"px";
+      panel.style.top=savedTop+"px";
+      panel.style.right="auto";
+      panel.style.bottom="auto";
+      panel.style.transform="none";
+    }else{
+      panel.style.left="50%";
+      panel.style.top="50%";
+      panel.style.right="auto";
+      panel.style.bottom="auto";
+      panel.style.transform="translate(-50%,-50%)";
+    }
     panel.classList.add(state.uiMode+"-mode");
     document.getElementById("controlModeLabel").textContent=state.uiMode==="tower"?"TOWER UPGRADES":state.uiMode==="build"?"BUILD MODE":"WAVE SETTINGS";
     document.querySelectorAll(".control-view").forEach(view=>view.classList.remove("active"));
