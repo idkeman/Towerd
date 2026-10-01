@@ -1056,7 +1056,7 @@ const UNLOCKS={
   function draw(){
     ctx.save();
     if(state.shake>0)ctx.translate((Math.random()-.5)*state.shake,(Math.random()-.5)*state.shake);
-    drawMap();drawTraps();drawTowers();drawEnemies();drawShots();drawParticles();drawTexts();ctx.restore();
+    drawMap();drawTraps();drawTowers();drawParagons();drawEnemies();drawShots();drawParticles();drawTexts();ctx.restore();
   }
   function drawMap(){
     ctx.fillStyle="#09111d";ctx.fillRect(0,0,W,H);
@@ -1110,8 +1110,20 @@ const UNLOCKS={
     return {damage:base.damage*scale,range:base.range*(1+degree*.025),rate:base.rate/Math.max(.35,1+degree*.015),splash:base.splash+degree*4,projectile:base.projectile*(1+degree*.02),degree};
   }
   function paragonSacrifices(type){
+    // A Paragon requires three DIFFERENT Tier-5 towers of the same type.
+    // Each sacrifice must represent a different Tier-5 branch. Secondary
+    // crosspath levels are allowed (for example 5-2-0 counts as Power).
     const candidates=state.towers.filter(t=>t.type===type&&branchLevels(t).includes(5));
-    return [0,1,2].map(pathIndex=>candidates.find(t=>branchLevels(t)[pathIndex]===5&&branchLevels(t).filter((v,i)=>i!==pathIndex&&v===0).length===2)).filter(Boolean);
+    const used=new Set();
+    const sacrifices=[];
+    for(const pathIndex of [0,1,2]){
+      const candidate=candidates.find(t=>!used.has(t)&&branchLevels(t)[pathIndex]===5);
+      if(candidate){
+        used.add(candidate);
+        sacrifices.push(candidate);
+      }
+    }
+    return sacrifices.length===3?sacrifices:[];
   }
   function canCreateParagon(type){
     const sacrifices=paragonSacrifices(type);
@@ -1288,7 +1300,13 @@ const UNLOCKS={
 
   function canvasPos(ev){const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)*W/r.width,y:(ev.clientY-r.top)*H/r.height};}
   document.getElementById("paragonCreateButton")?.addEventListener("click",()=>{const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[]));if(selected.length===1)createParagon(selected[0].type,0);});
-  document.getElementById("paragonFeedButton")?.addEventListener("click",()=>{const selected=state.selectedTower;if(!selected)return;const input=document.getElementById("paragonCash"),cash=Math.max(0,Math.floor(Number(input.value)||0));feedParagon(selected.type,cash);});
+  document.getElementById("paragonFeedButton")?.addEventListener("click",()=>{
+    const selected=state.selectedTower;
+    if(!selected||!paragonState(selected.type)){toast("SELECT A PARAGON FIRST");return;}
+    const input=document.getElementById("paragonCash"),cash=Math.max(0,Math.floor(Number(input.value)||0));
+    if(cash<=0){toast("ENTER CASH TO FEED");return;}
+    feedParagon(selected.type,cash);
+  });
   document.getElementById("towerUpgradePaths")?.addEventListener("click",e=>{
     const btn=e.target.closest(".tier-unlock");if(!btn)return;
     unlockTier(btn.dataset.unlockType,Number(btn.dataset.unlockPath),Number(btn.dataset.unlockTier));
@@ -1298,6 +1316,14 @@ const UNLOCKS={
   });
   canvas.addEventListener("click",e=>{
     const p=canvasPos(e);
+    const paragon=[...Object.values(state.paragons||{})].reverse().find(q=>Math.hypot(q.x-p.x,q.y-p.y)<34);
+    if(paragon){
+      state.selectedTower=paragon;
+      state.selectedTowers=[];
+      setControlMode("tower");
+      updateUI();
+      return;
+    }
     const tower=[...state.towers].reverse().find(t=>Math.hypot(t.x-p.x,t.y-p.y)<24);
     if(tower){
       if(e.shiftKey){
@@ -1450,7 +1476,7 @@ const UNLOCKS={
         document.getElementById("paragonTitle").textContent=existing?PARAGONS[t.type].name:PARAGONS[t.type]?.name||"PARAGON";
         document.getElementById("paragonStatus").textContent=existing?"Degree "+degree+" · Sacrifice "+Math.floor(existing.sacrificeValue)+" + $"+Math.floor(existing.extraCash):needed+"/3 Tier 5 towers ready · "+paragonXP(t.type)+"/"+PARAGON_XP_COST+" Tower XP";
         document.getElementById("paragonCreateButton").disabled=!eligible;
-        document.getElementById("paragonCreateButton").textContent=eligible?"CREATE PARAGON ($"+PARAGONS[t.type].cost+" + "+PARAGON_XP_COST+" XP)":"PARAGON CREATED";
+        document.getElementById("paragonCreateButton").textContent=eligible?"CREATE PARAGON ($"+PARAGONS[t.type].cost+" + "+PARAGON_XP_COST+" XP)":"PARAGON ACTIVE";
       }
       const powerEligible=selected.every(x=>!branchLocked(x,0)&&branchLevels(x)[0]<5&&branchPoints(x)<5);
       const powerCost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.72+branchPoints(x)*.46)),0);
