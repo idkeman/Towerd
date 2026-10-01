@@ -102,6 +102,7 @@ const UNLOCKS={
 
   const SAVE_KEY="towerd-save-v1";
   const PROFILE_KEY="towerd-profile-v1";
+  const CONTROL_PANEL_POSITION_KEY="towerd-control-panel-position-v1";
   let state;
   let saveTimer=0;
   let profile={level:1,xp:0,totalXp:0,shards:0,unlocked:[],towerXP:{},towerUpgrades:{}};
@@ -355,6 +356,48 @@ const UNLOCKS={
   const BRANCHES=[{id:"power",name:"POWER",color:"#fb7185",desc:"Damage, critical hits, and burst"},{id:"range",name:"RANGE",color:"#60a5fa",desc:"Range, projectile speed, and precision"},{id:"utility",name:"UTILITY",color:"#a3e635",desc:"Control, splash, and special effects"}];
   const BRANCH_NAMES={power:["Overcharge","Execution","Annihilation","Ruin","Cataclysm"],range:["Longshot","Vector","Horizon","Rail","Omnipoint"],utility:["Disrupt","Control","Catalyst","Singularity","Paradox"]};
 
+  function saveControlPanelPosition(panel){
+    if(!panel)return;
+    const left=Number(panel.dataset.dragLeft);
+    const top=Number(panel.dataset.dragTop);
+    if(!Number.isFinite(left)||!Number.isFinite(top))return;
+    try{
+      localStorage.setItem(CONTROL_PANEL_POSITION_KEY,JSON.stringify({left,top}));
+    }catch(error){
+      console.warn("Towerd control panel position save failed:",error);
+    }
+  }
+
+  function clampControlPanelPosition(panel,left,top){
+    if(!panel)return;
+    const maxLeft=Math.max(0,window.innerWidth-panel.offsetWidth);
+    const maxTop=Math.max(0,window.innerHeight-panel.offsetHeight);
+    const clampedLeft=Math.max(0,Math.min(maxLeft,Number(left)||0));
+    const clampedTop=Math.max(0,Math.min(maxTop,Number(top)||0));
+    panel.style.left=clampedLeft+"px";
+    panel.style.top=clampedTop+"px";
+    panel.style.right="auto";
+    panel.style.bottom="auto";
+    panel.style.transform="none";
+    panel.dataset.dragLeft=clampedLeft;
+    panel.dataset.dragTop=clampedTop;
+  }
+
+  function restoreControlPanelPosition(panel){
+    if(!panel)return false;
+    try{
+      const raw=localStorage.getItem(CONTROL_PANEL_POSITION_KEY);
+      if(!raw)return false;
+      const saved=JSON.parse(raw);
+      if(!Number.isFinite(Number(saved?.left))||!Number.isFinite(Number(saved?.top)))return false;
+      clampControlPanelPosition(panel,Number(saved.left),Number(saved.top));
+      return true;
+    }catch(error){
+      console.warn("Towerd control panel position restore failed:",error);
+      return false;
+    }
+  }
+
   function makeControlPanelDraggable(){
     const panel=document.getElementById("controlPanel");
     const handle=panel?.querySelector(".control-modebar");
@@ -366,7 +409,6 @@ const UNLOCKS={
     let startX=0,startY=0,startLeft=0,startTop=0;
 
     document.addEventListener("pointerdown",event=>{
-      if(!panel.classList.contains("tower-mode"))return;
       if(!event.target.closest("#controlPanel"))return;
       if(!event.target.closest("[data-drag-handle]"))return;
       if(event.target.closest("button,input,select,textarea"))return;
@@ -378,15 +420,10 @@ const UNLOCKS={
       startLeft=rect.left;
       startTop=rect.top;
 
-      panel.style.left=startLeft+"px";
-      panel.style.top=startTop+"px";
-      panel.style.right="auto";
-      panel.style.bottom="auto";
-      panel.style.transform="none";
-      panel.dataset.dragLeft=startLeft;
-      panel.dataset.dragTop=startTop;
+      clampControlPanelPosition(panel,startLeft,startTop);
       panel.classList.add("dragging");
 
+      try{handle.setPointerCapture?.(event.pointerId);}catch{}
       event.preventDefault();
       event.stopPropagation();
     },true);
@@ -412,11 +449,25 @@ const UNLOCKS={
       if(!dragging)return;
       dragging=false;
       panel.classList.remove("dragging");
+      saveControlPanelPosition(panel);
       event?.stopPropagation?.();
     };
 
     document.addEventListener("pointerup",endDrag,true);
     document.addEventListener("pointercancel",endDrag,true);
+
+    const restore=()=>restoreControlPanelPosition(panel);
+    window.addEventListener("resize",()=>{
+      const left=Number(panel.dataset.dragLeft);
+      const top=Number(panel.dataset.dragTop);
+      if(Number.isFinite(left)&&Number.isFinite(top)){
+        clampControlPanelPosition(panel,left,top);
+        saveControlPanelPosition(panel);
+      }else{
+        restore();
+      }
+    });
+    restore();
   }
 
   function setControlMode(mode){
@@ -429,12 +480,8 @@ const UNLOCKS={
     const savedLeft=panel.dataset.dragLeft;
     const savedTop=panel.dataset.dragTop;
     if(savedLeft!==undefined&&savedTop!==undefined){
-      panel.style.left=savedLeft+"px";
-      panel.style.top=savedTop+"px";
-      panel.style.right="auto";
-      panel.style.bottom="auto";
-      panel.style.transform="none";
-    }else{
+      clampControlPanelPosition(panel,Number(savedLeft),Number(savedTop));
+    }else if(!restoreControlPanelPosition(panel)){
       panel.style.left="50%";
       panel.style.top="50%";
       panel.style.right="auto";
