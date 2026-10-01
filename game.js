@@ -362,7 +362,7 @@ const UNLOCKS={
     handle.dataset.dragReady="1";
     let dragging=false,startX=0,startY=0,startLeft=0,startTop=0;
     handle.addEventListener("pointerdown",event=>{
-      if(event.target.closest("button"))return;
+      if(!panel.classList.contains("tower-mode")||event.target.closest("button"))return;
       dragging=true;
       const rect=panel.getBoundingClientRect();
       startX=event.clientX;startY=event.clientY;startLeft=rect.left;startTop=rect.top;
@@ -397,6 +397,7 @@ const UNLOCKS={
     if(!panel)return;
     const allowed=["wave","build","tower"];
     state.uiMode=allowed.includes(mode)?mode:"wave";
+    if(state.uiMode!=="tower"){panel.style.left="";panel.style.top="";panel.style.right="";panel.style.bottom="";panel.style.transform="";}
     panel.classList.remove("wave-mode","build-mode","tower-mode");
     panel.classList.add(state.uiMode+"-mode");
     document.getElementById("controlModeLabel").textContent=state.uiMode==="tower"?"TOWER UPGRADES":state.uiMode==="build"?"BUILD MODE":"WAVE SETTINGS";
