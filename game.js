@@ -361,11 +361,10 @@ const UNLOCKS={
     updateSaveButtons();
   }
   loadProfile();
+  reset();
   updateProgressionUI();
   updateTowerLocks();
   renderTowerUpgradeMenu();
-
-  reset();
 
   function selectMap(index){
     currentMap=Math.max(0,Math.min(MAPS.length-1,index));
