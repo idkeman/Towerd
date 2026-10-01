@@ -468,3 +468,14 @@ canvas{width:100%;height:100%;aspect-ratio:auto}
 .control-panel.tower-mode.dragging{
   transition:none!important;
 }
+
+.control-panel.tower-mode .control-modebar[data-drag-handle="true"]{
+  cursor:grab!important;
+  user-select:none!important;
+  -webkit-user-select:none!important;
+  touch-action:none!important;
+  pointer-events:auto!important;
+}
+.control-panel.tower-mode.dragging .control-modebar[data-drag-handle="true"]{
+  cursor:grabbing!important;
+}
