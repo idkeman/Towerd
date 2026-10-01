@@ -190,10 +190,10 @@ const UNLOCKS={
       :BRANCH_NAMES;
     paths.innerHTML=PATH_NAMES.map((path,p)=>{
       const rows=Array.from({length:5},(_,j)=>{
-        const tier=j+1,unlocked=tree[p][j],cost=TIER_XP_COST[tier],can=!unlocked&&(tier===1||tree[p][j-1])&&amount>=cost;
+        const tier=j+1,unlocked=tree[p][j],can=!unlocked;
         const label=type==="bank"?tierNames[pathKeys[p]==="power"?0:pathKeys[p]==="range"?1:2][j]:BRANCH_NAMES[pathKeys[p]][j];
         return "<button class='tier-unlock "+(unlocked?"unlocked":"locked")+"' data-unlock-type='"+type+"' data-unlock-path='"+p+"' data-unlock-tier='"+tier+"' "+(can?"":"disabled")+" title='"+def.name+" · "+label+"'>"+
-          "<span class='tier-orb'>"+(unlocked?"✓":tier)+"</span><span class='tier-copy'><b>"+label+"</b><small>"+(unlocked?"OWNED":"XP "+cost)+"</small></span></button>";
+          "<span class='tier-orb'>"+(unlocked?"✓":tier)+"</span><span class='tier-copy'><b>"+label+"</b><small>"+(unlocked?"OWNED":"FREE")+"</small></span></button>";
       }).join("");
       const pathIcon=TOWER_LOGOS[type]||"•";
       return "<section class='upgrade-path-card' style='--path-color:"+PATH_COLORS[p]+"'>"+
@@ -650,21 +650,17 @@ const UNLOCKS={
   }
   function towerXP(type){return Math.max(0,Number(profile.towerXP?.[type])||0);}
   function towerUpgradeState(type){
-    if(!profile.towerUpgrades[type])profile.towerUpgrades[type]=[[false,false,false,false,false],[false,false,false,false,false],[false,false,false,false,false]];
-    return profile.towerUpgrades[type];
+    const ready=[[true,true,true,true,true],[true,true,true,true,true],[true,true,true,true,true]];
+    profile.towerUpgrades[type]=ready;
+    return ready;
   }
   function isTierUnlocked(type,pathIndex,tier){
     if(tier<1||tier>5)return false;
     return !!towerUpgradeState(type)[pathIndex][tier-1];
   }
   function unlockTier(type,pathIndex,tier){
-    if(state?.started&&!state.gameOver&&!state.won){toast("UNLOCK UPGRADES FROM THE MENU BETWEEN MATCHES");return false;}
-    const tree=towerUpgradeState(type);
-    if(tier>1&&!tree[pathIndex][tier-2]){toast("UNLOCK TIER "+(tier-1)+" FIRST");return false;}
-    const cost=TIER_XP_COST[tier];
-    if(towerXP(type)<cost){toast(TYPES[type].name+" NEEDS "+cost+" TOWER XP");return false;}
-    profile.towerXP[type]=towerXP(type)-cost;
-    tree[pathIndex][tier-1]=true;
+    if(!TYPES[type]||pathIndex<0||pathIndex>2||tier<1||tier>5)return false;
+    towerUpgradeState(type)[pathIndex][tier-1]=true;
     saveProfile();renderTowerUpgradeMenu();return true;
   }
   function addTowerXP(type,amount){
@@ -795,6 +791,13 @@ const UNLOCKS={
     for(const p of Object.values(state.paragons||{})){
       const def=PARAGONS[p.type],stats=paragonStats({type:p.type});
       p.cooldown=Math.max(0,(p.cooldown||0)-dt);
+      if(p.type==="bank"){
+        if(p.cooldown>0)continue;
+        const payout=Math.floor(stats.income||150);
+        state.gold+=payout;p.cooldown=stats.rate;addTowerXPFromGold(p.type,payout);
+        floatText(p.x,p.y-30,"+$"+payout);burst(p.x,p.y,def.color,12);
+        continue;
+      }
       if(p.cooldown>0)continue;
       const target=nearestParagonTarget(p,stats.range);
       if(!target)continue;
@@ -1074,16 +1077,23 @@ const UNLOCKS={
       ctx.fillStyle="rgba(148,163,184,.55)";ctx.fillRect(x-3,y-3,6,6);
     }
   }
-  const PARAGONS={
-    dart:{name:"Apex Dartstorm",cost:2500,color:"#fef08a",damage:900,range:420,rate:.12,splash:70,projectile:1500},
-    cannon:{name:"Worldbreaker Cannon",cost:3000,color:"#fb923c",damage:2200,range:360,rate:1.2,splash:180,projectile:650},
-    sniper:{name:"Eclipse Marksman",cost:3500,color:"#e0f2fe",damage:4200,range:560,rate:1.9,projectile:1800},
-    missile:{name:"Armageddon Array",cost:4500,color:"#f97316",damage:3600,range:460,rate:1.5,splash:240,projectile:520},
-    laser:{name:"Helios Beam",cost:4200,color:"#fb7185",damage:1250,range:440,rate:.18,projectile:2200},
-    tesla:{name:"Storm Singularity",cost:4000,color:"#c084fc",damage:1600,range:390,rate:.28,projectile:1900,splash:130}
-  };
+  const PARAGON_XP_COST=1000;
+  const PARAGON_NAMES={dart:"Apex Dartstorm",cannon:"Worldbreaker Cannon",frost:"Glacial Sovereign",sniper:"Eclipse Marksman",machine:"Gatling Omega",flame:"Inferno Crown",tesla:"Storm Singularity",poison:"Toxicus Prime",missile:"Armageddon Array",railgun:"Railstorm",mortar:"Earthshaker",boomerang:"Cyclone Reaver",laser:"Helios Beam",plasma:"Starflare",crystal:"Crystal Crown",shockwave:"Cataclysm Pulse",drone:"Drone Legion",bunker:"Fortress Eternal",chrono:"Eon Breaker",gravity:"Black Hole",meteor:"Extinction",bank:"Golden Citadel",trap:"Spike Apocalypse",ember:"Inferno Ascendant",ballista:"Ballista Omega",warden:"Warden Eternal",oracle:"Oracle Prime",harvester:"Harvest Dominion",frostbite:"Frostbite Zero",arc:"Arc Tempest",volley:"Volley Barrage",sentinel:"Sentinel Aegis",beacon:"Beacon Radiance",vortex:"Vortex Collapse",siege:"Siege Colossus",swarm:"Swarm Hive",sun:"Sun Ascension",void:"Void Sovereign",titan:"Titan Overlord",prism:"Prism Spectrum",plague:"Plague Eruption",overdrive:"Overdrive Hyperion",doomsday:"Doomsday Event"};
+  const PARAGONS=Object.fromEntries(Object.entries(TYPES).map(([type,def])=>[type,{
+    name:PARAGON_NAMES[type]||def.name+" Ascendant",
+    cost:Math.max(2200,Math.floor(def.cost*10)),
+    color:def.color,
+    damage:Math.max(90,(def.damage||72)*8),
+    range:Math.max(250,(def.range||135)*1.65),
+    rate:Math.max(.08,(def.rate||1)*.42),
+    splash:Math.max(20,(def.splash||0)*1.6),
+    projectile:Math.max(500,(def.projectile||360)*1.45),
+    income:type==="bank"?Math.max(150,(def.income||20)*10):0
+  }]));
   const PARAGON_TYPES=Object.keys(PARAGONS);
-  function allTier5Unlocked(type){return [0,1,2].every(p=>isTierUnlocked(type,p,5));}
+  function allTier5Unlocked(type){return !!TYPES[type];}
+  function paragonXP(type){return towerXP(type);}
+  function canAffordParagonXP(type){return paragonXP(type)>=PARAGON_XP_COST;}
   function paragonState(type){return state.paragons?.[type]||null;}
   function paragonDegree(type){
     const p=paragonState(type);if(!p)return 0;
@@ -1092,6 +1102,7 @@ const UNLOCKS={
   function paragonStats(t){
     const base=PARAGONS[t.type],degree=paragonDegree(t.type);
     const scale=1+degree*.42;
+    if(t.type==="bank")return {damage:0,range:0,rate:Math.max(.6,base.rate||2)/Math.max(.7,1+degree*.02),splash:0,projectile:0,income:(base.income||150)*(1+degree*.18),degree};
     return {damage:base.damage*scale,range:base.range*(1+degree*.025),rate:base.rate/Math.max(.35,1+degree*.015),splash:base.splash+degree*4,projectile:base.projectile*(1+degree*.02),degree};
   }
   function paragonSacrifices(type){
@@ -1100,15 +1111,18 @@ const UNLOCKS={
   }
   function canCreateParagon(type){
     const sacrifices=paragonSacrifices(type);
-    return PARAGONS[type]&&allTier5Unlocked(type)&&!paragonState(type)&&sacrifices.length===3;
+    return PARAGONS[type]&&allTier5Unlocked(type)&&canAffordParagonXP(type)&&!paragonState(type)&&sacrifices.length===3;
   }
   function createParagon(type,extraCash=0){
     if(!canCreateParagon(type)){toast("THIS TOWER IS NOT READY FOR A PARAGON");return false;}
     const sacrifices=paragonSacrifices(type);
     if(sacrifices.length!==3){toast("PARAGON REQUIRES 3 TIER 5 TOWERS: ONE FOR EACH PATH");return false;}
     const required=PARAGONS[type].cost;
+    if(!canAffordParagonXP(type)){toast(TYPES[type].name+" NEEDS "+PARAGON_XP_COST+" TOWER XP FOR ITS PARAGON");return false;}
     if(state.gold<required+extraCash){toast("NEED $"+(required+extraCash)+" FOR THE PARAGON SACRIFICE");return false;}
     state.gold-=required+extraCash;
+    profile.towerXP[type]=paragonXP(type)-PARAGON_XP_COST;
+    saveProfile();
     const value=sacrifices.reduce((sum,t)=>sum+t.totalSpent,0);
     const first=sacrifices[0];
     state.towers=state.towers.filter(t=>!sacrifices.includes(t));
@@ -1430,9 +1444,9 @@ const UNLOCKS={
         paragonPanel.hidden=!eligible&&!existing;
         const needed=PARAGONS[t.type]?paragonSacrifices(t.type).length:0;
         document.getElementById("paragonTitle").textContent=existing?PARAGONS[t.type].name:PARAGONS[t.type]?.name||"PARAGON";
-        document.getElementById("paragonStatus").textContent=existing?"Degree "+degree+" · Sacrifice "+Math.floor(existing.sacrificeValue)+" + $"+Math.floor(existing.extraCash):needed+"/3 Tier 5 towers ready";
+        document.getElementById("paragonStatus").textContent=existing?"Degree "+degree+" · Sacrifice "+Math.floor(existing.sacrificeValue)+" + $"+Math.floor(existing.extraCash):needed+"/3 Tier 5 towers ready · "+paragonXP(t.type)+"/"+PARAGON_XP_COST+" Tower XP";
         document.getElementById("paragonCreateButton").disabled=!eligible;
-        document.getElementById("paragonCreateButton").textContent=eligible?"CREATE PARAGON ($"+PARAGONS[t.type].cost+")":"PARAGON CREATED";
+        document.getElementById("paragonCreateButton").textContent=eligible?"CREATE PARAGON ($"+PARAGONS[t.type].cost+" + "+PARAGON_XP_COST+" XP)":"PARAGON CREATED";
       }
       const powerEligible=selected.every(x=>!branchLocked(x,0)&&branchLevels(x)[0]<5&&branchPoints(x)<5);
       const powerCost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.72+branchPoints(x)*.46)),0);
