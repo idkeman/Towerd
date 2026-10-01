@@ -870,13 +870,18 @@ const UNLOCKS={
     const scale=1+degree*.42;
     return {damage:base.damage*scale,range:base.range*(1+degree*.025),rate:base.rate/Math.max(.35,1+degree*.015),splash:base.splash+degree*4,projectile:base.projectile*(1+degree*.02),degree};
   }
+  function paragonSacrifices(type){
+    const candidates=state.towers.filter(t=>t.type===type&&branchLevels(t).includes(5));
+    return [0,1,2].map(pathIndex=>candidates.find(t=>branchLevels(t)[pathIndex]===5&&branchLevels(t).filter((v,i)=>i!==pathIndex&&v===0).length===2)).filter(Boolean);
+  }
   function canCreateParagon(type){
-    return PARAGONS[type]&&allTier5Unlocked(type)&&!paragonState(type)&&state.towers.some(t=>t.type===type&&branchLevels(t).includes(5));
+    const sacrifices=paragonSacrifices(type);
+    return PARAGONS[type]&&allTier5Unlocked(type)&&!paragonState(type)&&sacrifices.length===3;
   }
   function createParagon(type,extraCash=0){
     if(!canCreateParagon(type)){toast("THIS TOWER IS NOT READY FOR A PARAGON");return false;}
-    const sacrifices=state.towers.filter(t=>t.type===type&&branchLevels(t).includes(5));
-    if(!sacrifices.length)return false;
+    const sacrifices=paragonSacrifices(type);
+    if(sacrifices.length!==3){toast("PARAGON REQUIRES 3 TIER 5 TOWERS: ONE FOR EACH PATH");return false;}
     const required=PARAGONS[type].cost;
     if(state.gold<required+extraCash){toast("NEED $"+(required+extraCash)+" FOR THE PARAGON SACRIFICE");return false;}
     state.gold-=required+extraCash;
@@ -1162,11 +1167,12 @@ const UNLOCKS={
       const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;renderTowerUpgradeMenu();
       const paragonPanel=document.getElementById("paragonPanel");
       if(paragonPanel){
-        const eligible=PARAGONS[t.type]&&allTier5Unlocked(t.type)&&!paragonState(t.type)&&levels.includes(5);
+        const eligible=PARAGONS[t.type]&&allTier5Unlocked(t.type)&&!paragonState(t.type)&&paragonSacrifices(t.type).length===3;
         const existing=paragonState(t.type),degree=existing?paragonDegree(t.type):0;
         paragonPanel.hidden=!eligible&&!existing;
+        const needed=PARAGONS[t.type]?paragonSacrifices(t.type).length:0;
         document.getElementById("paragonTitle").textContent=existing?PARAGONS[t.type].name:PARAGONS[t.type]?.name||"PARAGON";
-        document.getElementById("paragonStatus").textContent=existing?"Degree "+degree+" · Sacrifice "+Math.floor(existing.sacrificeValue)+" + $"+Math.floor(existing.extraCash):"All 3 Tier 5 paths unlocked";
+        document.getElementById("paragonStatus").textContent=existing?"Degree "+degree+" · Sacrifice "+Math.floor(existing.sacrificeValue)+" + $"+Math.floor(existing.extraCash):needed+"/3 Tier 5 towers ready";
         document.getElementById("paragonCreateButton").disabled=!eligible;
         document.getElementById("paragonCreateButton").textContent=eligible?"CREATE PARAGON ($"+PARAGONS[t.type].cost+")":"PARAGON CREATED";
       }
