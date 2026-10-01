@@ -355,12 +355,26 @@ const UNLOCKS={
   const BRANCHES=[{id:"power",name:"POWER",color:"#fb7185",desc:"Damage, critical hits, and burst"},{id:"range",name:"RANGE",color:"#60a5fa",desc:"Range, projectile speed, and precision"},{id:"utility",name:"UTILITY",color:"#a3e635",desc:"Control, splash, and special effects"}];
   const BRANCH_NAMES={power:["Overcharge","Execution","Annihilation","Ruin","Cataclysm"],range:["Longshot","Vector","Horizon","Rail","Omnipoint"],utility:["Disrupt","Control","Catalyst","Singularity","Paradox"]};
 
+  function setControlMode(mode){
+    const panel=document.getElementById("controlPanel");
+    if(!panel)return;
+    const allowed=["wave","build","tower"];
+    state.uiMode=allowed.includes(mode)?mode:"wave";
+    panel.classList.remove("wave-mode","build-mode","tower-mode");
+    panel.classList.add(state.uiMode+"-mode");
+    document.getElementById("controlModeLabel").textContent=state.uiMode==="tower"?"TOWER UPGRADES":state.uiMode==="build"?"BUILD MODE":"WAVE SETTINGS";
+    document.querySelectorAll(".control-view").forEach(view=>view.classList.remove("active"));
+    const target=document.getElementById(state.uiMode==="tower"?"towerSettings":state.uiMode==="build"?"buildSettings":"waveSettings");
+    if(target)target.classList.add("active");
+  }
+
   function reset(){
     state={started:false,gameOver:false,won:false,wave:0,gold:startingGold(),lives:startingLives(),
       towers:[],traps:[],enemies:[],shots:[],particles:[],texts:[],selectedTower:null,
-      selectedBuild:"dart",selectedTowers:[],difficulty:localStorage.getItem(DIFFICULTY_KEY)||"easy",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
+      selectedBuild:"dart",selectedTowers:[],uiMode:"wave",difficulty:localStorage.getItem(DIFFICULTY_KEY)||"easy",waveActive:false,spawnLeft:0,spawnTimer:0,spawnTotal:0,
       speed:1,autoWave:false,betweenTimer:0,time:0,shake:0,paragons:{}};
     updateUI();
+    setControlMode("wave");
     updateSaveButtons();
   }
   loadProfile();
@@ -1076,7 +1090,7 @@ const UNLOCKS={
     if(tower){
       if(e.shiftKey){
         const selected=state.selectedTowers||[];
-        if(state.selectedTowers.length&&selected[0].type!==tower.type){
+        if(selected.length&&selected[0].type!==tower.type){
           state.selectedTowers=[tower];
         }else if(selected.includes(tower)){
           state.selectedTowers=selected.filter(t=>t!==tower);
@@ -1087,11 +1101,22 @@ const UNLOCKS={
         state.selectedTowers=[tower];
       }
       state.selectedTower=state.selectedTowers[0]||null;
+      setControlMode("tower");
       updateUI();
       return;
     }
-    if(state.selectedTower||state.selectedTowers?.length){state.selectedTower=null;state.selectedTowers=[];updateUI();}
-    placeTower(p.x,p.y);
+
+    if(state.selectedTower||state.selectedTowers?.length){
+      state.selectedTower=null;
+      state.selectedTowers=[];
+      setControlMode("wave");
+      updateUI();
+      return;
+    }
+
+    if(state.uiMode==="build"){
+      placeTower(p.x,p.y);
+    }
   });
   canvas.addEventListener("mousemove",e=>{const p=canvasPos(e);canvas.style.cursor=state.towers.some(t=>Math.hypot(t.x-p.x,t.y-p.y)<24)?"pointer":(isBuildable(p.x,p.y)?"crosshair":"not-allowed");});
 
@@ -1103,8 +1128,11 @@ const UNLOCKS={
   document.querySelectorAll(".tower-card").forEach(btn=>btn.addEventListener("click",()=>{
     const type=btn.dataset.tower;
     if(!isUnlocked(type)){unlockTower(type);return;}
-    if(!isUnlocked(type))return;state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;state.selectedTowers=[];renderTowerUpgradeMenu();updateUI();
+    if(!isUnlocked(type))return;state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;state.selectedTowers=[];setControlMode("build");renderTowerUpgradeMenu();updateUI();
   }));
+  document.getElementById("buildModeButton")?.addEventListener("click",()=>{state.selectedTower=null;state.selectedTowers=[];setControlMode("build");updateUI();});
+  document.getElementById("waveModeButton")?.addEventListener("click",()=>{state.selectedTower=null;state.selectedTowers=[];setControlMode("wave");updateUI();});
+
   const difficultySelect=document.getElementById("difficultySelect");
   if(difficultySelect){
     difficultySelect.value=localStorage.getItem(DIFFICULTY_KEY)||"easy";
@@ -1147,7 +1175,7 @@ const UNLOCKS={
   window.addEventListener("keydown",e=>{
     if(e.key==="1")selectBuild("dart");if(e.key==="2")selectBuild("cannon");if(e.key==="3")selectBuild("frost");
     if(e.code==="Space"){e.preventDefault();if(!state.started)startGame();else if(!state.waveActive)startWave();}
-    if(e.key==="Escape"){state.selectedTower=null;state.selectedTowers=[];updateUI();}
+    if(e.key==="Escape"){state.selectedTower=null;state.selectedTowers=[];setControlMode("wave");updateUI();}
     if(e.key.toLowerCase()==="r"&&state.gameOver){reset();startGame();}
   });
   function selectBuild(type){state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===type));}
@@ -1171,6 +1199,12 @@ const UNLOCKS={
   }
 
   function updateUI(){
+    const hasSelection=!!(state.selectedTower||state.selectedTowers?.length);
+    if(hasSelection){
+      setControlMode("tower");
+    }else if(state.uiMode!=="build"){
+      setControlMode("wave");
+    }
     document.getElementById("waveValue").textContent=state.wave;document.getElementById("goldValue").textContent=state.gold;document.getElementById("livesValue").textContent=state.lives;updateDifficultyUI();
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
     const t=selected[0],info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton"),replaceBtn=document.getElementById("replaceButton"),branchBox=document.getElementById("branchControls");
