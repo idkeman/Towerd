@@ -163,6 +163,20 @@ const UNLOCKS={
     updateProgressionUI();updateTowerLocks();
     if(leveled)toast("COMMAND RANK "+profile.level+"  +PERMANENT BONUS");
   }
+  function renderTowerUpgradeMenu(){
+    const panel=document.getElementById("towerUpgradeMenu"),paths=document.getElementById("towerUpgradePaths"),name=document.getElementById("towerUpgradeName"),xp=document.getElementById("towerUpgradeXP");
+    if(!panel||!paths)return;
+    const type=state?.selectedBuild||"dart",def=TYPES[type],amount=towerXP(type),tree=towerUpgradeState(type);
+    name.textContent=def?def.name:"Tower";xp.textContent=amount+" TOWER XP";
+    paths.innerHTML=PATH_NAMES.map((path,p)=>{
+      const rows=Array.from({length:5},(_,j)=>{
+        const tier=j+1,unlocked=tree[p][j],cost=TIER_XP_COST[tier],can=!unlocked&&(tier===1||tree[p][j-1])&&amount>=cost;
+        return "<button class='tier-unlock "+(unlocked?"unlocked":"locked")+"' data-unlock-type='"+type+"' data-unlock-path='"+p+"' data-unlock-tier='"+tier+"' "+(can?"":"disabled")+">"+tier+"<br>"+(unlocked?"✓":"XP "+cost)+"</button>";
+      }).join("");
+      return "<div class='upgrade-path' style='--path-color:"+PATH_COLORS[p]+"'><div class='upgrade-path-title'><span>"+path+" PATH</span><span>5 TIERS</span></div><div class='tier-row'>"+rows+"</div></div>";
+    }).join("");
+  }
+
   function updateProgressionUI(){
     const level=document.getElementById("profileLevel");
     const bar=document.getElementById("profileProgressBar");
@@ -945,6 +959,10 @@ const UNLOCKS={
   function drawTexts(){ctx.textAlign="center";ctx.font="700 13px system-ui";for(const t of state.texts){ctx.globalAlpha=t.life;ctx.fillStyle="#fff";ctx.fillText(t.text,t.x,t.y);}ctx.globalAlpha=1;}
 
   function canvasPos(ev){const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)*W/r.width,y:(ev.clientY-r.top)*H/r.height};}
+  document.getElementById("towerUpgradePaths")?.addEventListener("click",e=>{
+    const btn=e.target.closest(".tier-unlock");if(!btn)return;
+    unlockTier(btn.dataset.unlockType,Number(btn.dataset.unlockPath),Number(btn.dataset.unlockTier));
+  });
   document.getElementById("branchControls")?.addEventListener("click",e=>{
     const btn=e.target.closest(".branch-button");if(btn)upgradeBranchSelection(Number(btn.dataset.branch));
   });
@@ -981,7 +999,7 @@ const UNLOCKS={
   document.querySelectorAll(".tower-card").forEach(btn=>btn.addEventListener("click",()=>{
     const type=btn.dataset.tower;
     if(!isUnlocked(type)){unlockTower(type);return;}
-    if(!isUnlocked(type))return;state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;state.selectedTowers=[];updateUI();
+    if(!isUnlocked(type))return;state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b===btn));state.selectedTower=null;state.selectedTowers=[];renderTowerUpgradeMenu();updateUI();
   }));
   const difficultySelect=document.getElementById("difficultySelect");
   if(difficultySelect){
@@ -1010,6 +1028,7 @@ const UNLOCKS={
   updateSaveButtons();
   document.getElementById("waveButton").onclick=()=>state.started&&!state.waveActive?startWave():null;
   document.getElementById("upgradeButton").onclick=upgrade;
+  document.getElementById("abilityButton").onclick=()=>{const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[]));if(selected.length===1)activateTowerAbility(selected[0]);};
   document.getElementById("selectAllSameButton").onclick=selectAllSameType;
   document.getElementById("replaceButton").onclick=replaceSelectedTowers;
   document.getElementById("sellButton").onclick=sell;
@@ -1052,13 +1071,20 @@ const UNLOCKS={
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
     const t=selected[0],info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton"),replaceBtn=document.getElementById("replaceButton"),branchBox=document.getElementById("branchControls");
     if(t){
-      const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;
+      const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;renderTowerUpgradeMenu();
       const powerEligible=selected.every(x=>!branchLocked(x,0)&&branchLevels(x)[0]<5&&branchPoints(x)<5);
       const powerCost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.72+branchPoints(x)*.46)),0);
       info.innerHTML=selected.length>1?"<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · Shift-click to exclude individual towers. Two branches may be used; the third then locks.</span>":"<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(stats.damage):"—")+" · Range "+Math.floor(stats.range)+" · Kills "+t.kills+"<br><strong>"+ability.name+"</strong>: "+ability.desc+"</span>";
       targetSelect.disabled=selected.length!==1||!d.damage;targetSelect.value=t.targetMode||"furthest";
-      up.disabled=!powerEligible||state.gold<powerCost;up.firstChild.textContent="UPGRADE POWER ";document.getElementById("upgradeCost").textContent=!powerEligible?"LOCKED":"$"+powerCost;
-      if(branchBox)branchBox.innerHTML=BRANCHES.map((b,i)=>{const lv=levels[i],locked=branchLocked(t,i),eligible=selected.every(x=>!branchLocked(x,i)&&branchLevels(x)[i]<5&&branchPoints(x)<5),cost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.72+branchPoints(x)*.46)),0),disabled=locked||!eligible||state.gold<cost,label=selected.length>1?b.name+" +1 ALL":b.name+" +1";return "<button class='branch-button "+(locked?"branch-locked":"")+"' data-branch='"+i+"' "+(disabled?"disabled":"")+"><b>"+label+" · Lv."+lv+"</b><span>"+b.desc+" · $"+cost+"</span></button>";}).join("");
+      const abilityButton=document.getElementById("abilityButton");
+      if(abilityButton){
+        const mid=levels[1],remaining=Math.max(0,(t.abilityCooldown||0)-state.time);
+        abilityButton.disabled=mid<1||remaining>0;
+        abilityButton.textContent=mid<1?"MIDDLE PATH REQUIRED":remaining>0?"ABILITY "+remaining.toFixed(1)+"s":"ACTIVATE "+(mid>=5?"ULTIMATE":mid>=3?"POWER":"ABILITY");
+      }
+
+      up.disabled=!powerEligible||!selected.every(x=>isTierUnlocked(x.type,0,branchLevels(x)[0]+1))||state.gold<powerCost;up.firstChild.textContent="UPGRADE TOP ";document.getElementById("upgradeCost").textContent=!powerEligible?"LOCKED":"$"+powerCost;
+      if(branchBox)branchBox.innerHTML=BRANCHES.map((b,i)=>{const lv=levels[i],next=lv+1,locked=branchLocked(t,i),eligible=selected.every(x=>canUpgradeBranch(x,i)&&isTierUnlocked(x.type,i,branchLevels(x)[i]+1)),cost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.5+branchLevels(x)[i]*.38)),0),disabled=locked||!eligible||state.gold<cost,label=selected.length>1?b.name+" +1 ALL":b.name+" +1";return "<button class='branch-button "+(locked?"branch-locked":"")+"' data-branch='"+i+"' "+(disabled?"disabled":"")+"><b>"+label+" · Lv."+lv+"</b><span>"+b.desc+" · $"+cost+"</span></button>";}).join("");
       sellBtn.disabled=false;document.getElementById("sellValue").textContent=selected.length>1?"$"+selected.reduce((sum,x)=>sum+Math.floor(x.totalSpent*.68),0):"$"+Math.floor(t.totalSpent*.68);sellBtn.firstChild.textContent=selected.length>1?"SELL ALL ":"SELL ";selectAllBtn.disabled=false;replaceBtn.disabled=selected.some(x=>x.type===state.selectedBuild);replaceBtn.textContent=selected.length>1?"REPLACE ALL WITH "+TYPES[state.selectedBuild].name.toUpperCase():"REPLACE WITH "+TYPES[state.selectedBuild].name.toUpperCase();
     }else{
       info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";selectAllBtn.disabled=true;replaceBtn.disabled=true;replaceBtn.textContent="REPLACE SELECTED";document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";if(branchBox)branchBox.innerHTML="";
