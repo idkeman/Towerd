@@ -1416,7 +1416,9 @@ const UNLOCKS={
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
     const t=selected[0],info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton"),replaceBtn=document.getElementById("replaceButton"),branchBox=document.getElementById("branchControls");
     if(t){
-      const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;renderTowerUpgradeMenu();
+      const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;
+      state.selectedBuild=t.type;
+      renderTowerUpgradeMenu();
       const paragonPanel=document.getElementById("paragonPanel");
       if(paragonPanel){
         const eligible=PARAGONS[t.type]&&allTier5Unlocked(t.type)&&!paragonState(t.type)&&paragonSacrifices(t.type).length===3;
