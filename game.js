@@ -1311,13 +1311,15 @@ const UNLOCKS={
     const btn=e.target.closest(".tier-unlock");if(!btn)return;
     unlockTier(btn.dataset.unlockType,Number(btn.dataset.unlockPath),Number(btn.dataset.unlockTier));
   });
-  document.getElementById("branchControls")?.addEventListener("click",e=>{
+  const branchControls=document.getElementById("branchControls");
+  branchControls?.addEventListener("click",e=>{
     const btn=e.target.closest(".branch-button");
     if(!btn||btn.disabled)return;
     e.preventDefault();
-    e.stopPropagation();
-    upgradeBranchSelection(Number(btn.dataset.branch));
-  });
+    e.stopImmediatePropagation();
+    const index=Number(btn.dataset.branch);
+    if(Number.isInteger(index)&&index>=0&&index<3)upgradeBranchSelection(index);
+  },true);
   canvas.addEventListener("click",e=>{
     const p=canvasPos(e);
     const paragon=[...Object.values(state.paragons||{})].reverse().find(q=>Math.hypot(q.x-p.x,q.y-p.y)<34);
