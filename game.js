@@ -163,6 +163,12 @@ const UNLOCKS={
     updateProgressionUI();updateTowerLocks();
     if(leveled)toast("COMMAND RANK "+profile.level+"  +PERMANENT BONUS");
   }
+  const TOWER_LOGOS={
+    dart:"•",cannon:"◆",frost:"❄",sniper:"⌁",machine:"≡",flame:"♨",tesla:"ϟ",poison:"☠",
+    missile:"▲",railgun:"╋",mortar:"●",boomerang:"◖",laser:"—",plasma:"✦",crystal:"◇",
+    shockwave:"◎",drone:"◆",bunker:"▣",chrono:"◷",gravity:"◉",meteor:"☄",bank:"$",trap:"✹",trap:"✹"
+  };
+
   function renderTowerUpgradeMenu(){
     const panel=document.getElementById("towerUpgradeMenu"),paths=document.getElementById("towerUpgradePaths"),name=document.getElementById("towerUpgradeName"),xp=document.getElementById("towerUpgradeXP");
     if(!panel||!paths)return;
@@ -909,11 +915,6 @@ const UNLOCKS={
     state.gold-=cash;p.extraCash+=cash;burst(p.x,p.y,PARAGONS[type].color,20);toast("PARAGON FED · DEGREE "+paragonDegree(type));updateUI();return true;
   }
 
-  const TOWER_LOGOS={
-    dart:"•",cannon:"◆",frost:"❄",sniper:"⌁",machine:"≡",flame:"♨",tesla:"ϟ",poison:"☠",
-    missile:"▲",railgun:"╋",mortar:"●",boomerang:"◖",laser:"—",plasma:"✦",crystal:"◇",
-    shockwave:"◎",drone:"◆",bunker:"▣",chrono:"◷",gravity:"◉",meteor:"☄",bank:"$",trap:"✹",trap:"✹"
-  };
 
   function drawTowerLogo(t,d){
     const logo=TOWER_LOGOS[t.type]||"•";
