@@ -46,6 +46,15 @@ canvas { display:block; width:100%; height:auto; aspect-ratio:16/9; cursor:cross
 .cannon-icon:after { content:""; position:absolute; width:20px; height:10px; background:#ff9f43; left:6px; top:11px; border-radius:4px; }
 .frost-icon:after { content:"✦"; color:#72d8ff; position:absolute; left:7px; top:2px; font-size:23px; }
 .divider { height:1px; background:var(--line); margin:16px 0; }
+.branch-controls{display:grid;grid-template-columns:1fr;gap:6px;margin:7px 0 8px}
+.branch-button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;text-align:left;padding:8px 9px;border-radius:8px;background:#151e2c;border:1px solid #334155;color:#e5edf8;cursor:pointer}
+.branch-button b{font-size:10px;letter-spacing:.05em}
+.branch-button span{font-size:9px;color:var(--muted);text-align:right;line-height:1.25}
+.branch-button:hover:not(:disabled){background:#202d40;border-color:#64748b;transform:translateY(-1px)}
+.branch-button:nth-child(1){border-left:3px solid #fb7185}
+.branch-button:nth-child(2){border-left:3px solid #60a5fa}
+.branch-button:nth-child(3){border-left:3px solid #a3e635}
+.branch-button.branch-locked{background:#121721;border-color:#2a3342}
 .tower-info { min-height:82px; background:#0d131e; border:1px solid #222c3c; border-radius:9px; padding:11px; margin-bottom:8px; }
 .tower-info b,.tower-info span { display:block; }
 .tower-info b { font-size:13px; margin-bottom:6px; }
