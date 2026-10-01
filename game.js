@@ -355,6 +355,43 @@ const UNLOCKS={
   const BRANCHES=[{id:"power",name:"POWER",color:"#fb7185",desc:"Damage, critical hits, and burst"},{id:"range",name:"RANGE",color:"#60a5fa",desc:"Range, projectile speed, and precision"},{id:"utility",name:"UTILITY",color:"#a3e635",desc:"Control, splash, and special effects"}];
   const BRANCH_NAMES={power:["Overcharge","Execution","Annihilation","Ruin","Cataclysm"],range:["Longshot","Vector","Horizon","Rail","Omnipoint"],utility:["Disrupt","Control","Catalyst","Singularity","Paradox"]};
 
+  function makeControlPanelDraggable(){
+    const panel=document.getElementById("controlPanel");
+    const handle=panel?.querySelector(".control-modebar");
+    if(!panel||!handle||handle.dataset.dragReady)return;
+    handle.dataset.dragReady="1";
+    let dragging=false,startX=0,startY=0,startLeft=0,startTop=0;
+    handle.addEventListener("pointerdown",event=>{
+      if(event.target.closest("button"))return;
+      dragging=true;
+      const rect=panel.getBoundingClientRect();
+      startX=event.clientX;startY=event.clientY;startLeft=rect.left;startTop=rect.top;
+      panel.classList.add("dragging");
+      handle.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    });
+    handle.addEventListener("pointermove",event=>{
+      if(!dragging)return;
+      const maxLeft=Math.max(0,window.innerWidth-panel.offsetWidth);
+      const maxTop=Math.max(0,window.innerHeight-panel.offsetHeight);
+      const left=Math.max(0,Math.min(maxLeft,startLeft+event.clientX-startX));
+      const top=Math.max(0,Math.min(maxTop,startTop+event.clientY-startY));
+      panel.style.left=left+"px";
+      panel.style.top=top+"px";
+      panel.style.right="auto";
+      panel.style.bottom="auto";
+      panel.style.transform="none";
+    });
+    const stop=event=>{
+      if(!dragging)return;
+      dragging=false;
+      panel.classList.remove("dragging");
+      handle.releasePointerCapture?.(event.pointerId);
+    };
+    handle.addEventListener("pointerup",stop);
+    handle.addEventListener("pointercancel",stop);
+  }
+
   function setControlMode(mode){
     const panel=document.getElementById("controlPanel");
     if(!panel)return;
@@ -379,6 +416,7 @@ const UNLOCKS={
   }
   loadProfile();
   reset();
+  makeControlPanelDraggable();
   updateProgressionUI();
   updateTowerLocks();
   renderTowerUpgradeMenu();
