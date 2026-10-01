@@ -347,6 +347,7 @@ const UNLOCKS={
   loadProfile();
   updateProgressionUI();
   updateTowerLocks();
+  renderTowerUpgradeMenu();
 
   reset();
 
