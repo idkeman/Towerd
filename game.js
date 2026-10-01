@@ -199,7 +199,7 @@ const UNLOCKS={
     try{
       if(!state||!state.started)return false;
       const snapshot={
-        version:2,
+        version:3,
         savedAt:Date.now(),
         map:currentMap,
         wave:state.wave,
@@ -218,7 +218,7 @@ const UNLOCKS={
         time:state.time,difficulty:state.difficulty||"easy",
         selectedBuild:state.selectedBuild,
         towers:state.towers.map(t=>({
-          type:t.type,x:t.x,y:t.y,level:t.level,cooldown:t.cooldown,
+          type:t.type,x:t.x,y:t.y,level:t.level,branches:branchLevels(t),cooldown:t.cooldown,
           totalSpent:t.totalSpent,kills:t.kills,targetMode:t.targetMode||"furthest"
         })),
         traps:state.traps.filter(t=>!t.dead).map(t=>({
@@ -248,7 +248,7 @@ const UNLOCKS={
       const raw=localStorage.getItem(SAVE_KEY);
       if(!raw)return false;
       const save=JSON.parse(raw);
-      if(!save||!([1,2].includes(save.version)))return false;
+      if(!save||!([1,2,3].includes(save.version)))return false;
 
       currentMap=Math.max(0,Math.min(MAPS.length-1,Number(save.map)||0));
       path=MAPS[currentMap].path;
@@ -269,7 +269,8 @@ const UNLOCKS={
       };
 
       state.towers=state.towers.filter(t=>TYPES[t.type]).map(t=>({
-        type:t.type,x:Number(t.x),y:Number(t.y),level:Math.max(1,Math.min(5,Number(t.level)||1)),
+        type:t.type,x:Number(t.x),y:Number(t.y),level:1+Math.min(5,branchLevels(t).reduce((a,b)=>a+b,0)),
+        branches:Array.isArray(t.branches)?t.branches.map(v=>Math.max(0,Math.min(5,Number(v)||0))):[0,0,0],
         cooldown:Number(t.cooldown)||0,totalSpent:Number(t.totalSpent)||TYPES[t.type].cost,
         kills:Number(t.kills)||0,targetMode:t.targetMode||"furthest"
       }));
@@ -441,7 +442,7 @@ const UNLOCKS={
     const type=TYPES[state.selectedBuild];
     if(state.gold<type.cost){toast("NOT ENOUGH GOLD");return;}
     if(!isBuildable(x,y))return;
-    const t={type:state.selectedBuild,x,y,level:1,cooldown:0,totalSpent:type.cost,kills:0,targetMode:"furthest"};
+    const t={type:state.selectedBuild,x,y,level:1,branches:[0,0,0],cooldown:0,totalSpent:type.cost,kills:0,targetMode:"furthest"};
     state.gold-=type.cost;state.towers.push(t);state.selectedTower=t;
     burst(x,y,type.color,12);updateUI();
   }
@@ -459,7 +460,7 @@ const UNLOCKS={
 
   function nearestTarget(t){
     const def=TYPES[t.type];
-    const levelScale=1+(t.level-1)*0.05;
+    const stats=towerStats(t),levelScale=stats.range/(def.range||1);
     const mode=t.targetMode||"furthest";
     let best=null,bestScore=(mode==="weakest"||mode==="closest")?Infinity:-Infinity;
     for(const e of state.enemies){
@@ -490,7 +491,7 @@ const UNLOCKS={
     if(!p||Math.hypot(t.x-p.x,t.y-p.y)>def.range)return false;
     if(state.traps.some(tr=>!tr.dead&&Math.hypot(tr.x-p.x,tr.y-p.y)<28))return false;
     state.traps.push({x:p.x,y:p.y,damage:def.damage*(1+(t.level-1)*.25),life:def.trapLife*(1+(t.level-1)*.15),slow:def.slow,slowTime:def.slowTime,towerType:"trap",dead:false});
-    t.cooldown=def.rate*Math.pow(.94,t.level-1);
+    t.cooldown=towerStats(t).rate;
     burst(p.x,p.y,def.color,7);
     return true;
   }
@@ -547,11 +548,12 @@ const UNLOCKS={
     state.traps=state.traps.filter(t=>!t.dead);
   }
   function shoot(t,target){
-    const def=TYPES[t.type];
+    const def=TYPES[t.type],stats=towerStats(t);
     if(!def.damage||t.type==="trap")return;
-    t.cooldown=def.rate*Math.pow(0.94,t.level-1);
-    state.shots.push({x:t.x,y:t.y,target,tx:target.x,ty:target.y,speed:def.projectile,
-      damage:def.damage*(1+(t.level-1)*0.25),tower:t,type:t.type,color:def.color,splash:def.splash||0,slow:def.slow||1,slowTime:def.slowTime||0});
+    t.cooldown=stats.rate;
+    state.shots.push({x:t.x,y:t.y,target,tx:target.x,ty:target.y,speed:stats.projectile,
+      damage:stats.damage,splash:stats.splash,color:def.color,slow:stats.slow,slowTime:stats.slowTime,
+      tower:t,type:t.type,ability:stats.ability,branchLevels:branchLevels(t)});
     burst(t.x,t.y,def.color,2);
   }
 
@@ -570,6 +572,38 @@ const UNLOCKS={
       burst(e.x,e.y,s.color,14);state.shake=Math.max(state.shake,4);
     }else burst(e.x,e.y,s.color,4);
     if(e.hp<=0)killEnemy(e,s.tower);
+    triggerTowerAbility(s,e);
+  }
+  function triggerTowerAbility(s,e){
+    const a=s.ability;
+    if(!a||!a.chance||Math.random()>a.chance)return;
+    const extra=Math.max(1,Math.floor(s.damage*a.damageMult));
+    if(a.mode==="pierce"){
+      const candidates=state.enemies.filter(x=>!x.dead&&x!==e&&Math.hypot(x.x-e.x,x.y-e.y)<=a.radius).sort((x,y)=>y.progress-x.progress).slice(0,1+Math.floor(a.dominant/2));
+      for(const x of candidates){x.hp-=extra;if(x.hp<=0)killEnemy(x,s.tower);}
+    }else if(a.mode==="rupture"){
+      for(const x of state.enemies){
+        if(!x.dead&&Math.hypot(x.x-e.x,x.y-e.y)<=a.radius){
+          x.hp-=extra;
+          x.slow=a.slow;x.slowUntil=state.time+s.tower.type.length*.03+1.2;
+          if(x.hp<=0)killEnemy(x,s.tower);
+        }
+      }
+    }else if(a.mode==="control"){
+      for(const x of state.enemies){
+        if(!x.dead&&Math.hypot(x.x-e.x,x.y-e.y)<=a.radius){x.slow=Math.min(x.slow,a.slow);x.slowUntil=state.time+1.5+a.dominant*.35;}
+      }
+    }else if(a.mode==="execute"){
+      e.hp-=extra*1.35;if(e.hp<=0)killEnemy(e,s.tower);
+    }else if(a.mode==="volley"){
+      const target=nearestTarget(s.tower);
+      if(target&&target!==e){target.hp-=extra;if(target.hp<=0)killEnemy(target,s.tower);}
+    }else{
+      for(const x of state.enemies){
+        if(!x.dead&&Math.hypot(x.x-e.x,x.y-e.y)<=a.radius){x.hp-=extra;if(x.hp<=0)killEnemy(x,s.tower);}
+      }
+    }
+    burst(e.x,e.y,s.color,10);floatText(e.x,e.y-22,a.name.split(" ").slice(-1)[0]);
   }
 
   function killEnemy(e,tower){
@@ -613,7 +647,7 @@ const UNLOCKS={
       const def=TYPES[t.type];
       if(def.income){
         if(t.cooldown<=0){
-          const amount=Math.floor(def.income*(1+(t.level-1)*.25));
+          const amount=Math.floor(def.income*(1+(t.level-1)*.25+branchLevels(t)[0]*.2+branchLevels(t)[2]*.1));
           state.gold+=amount;
           t.cooldown=def.rate*Math.pow(.94,t.level-1);
           floatText(t.x,t.y-24,"+$"+amount);
@@ -739,9 +773,27 @@ const UNLOCKS={
       ctx.restore();
     }
   }
+  function drawTowerUpgradeVariant(t,d){
+    const [p,r,u]=branchLevels(t),total=p+r+u;
+    if(!total)return;
+    const sig=(p*31+r*17+u*13)%6;
+    ctx.save();ctx.translate(t.x,t.y);
+    const colors=[BRANCHES[0].color,BRANCHES[1].color,BRANCHES[2].color];
+    for(let i=0;i<3;i++){
+      const n=[p,r,u][i];if(!n)continue;
+      ctx.strokeStyle=colors[i];ctx.lineWidth=1.5+n*.35;ctx.globalAlpha=.55;
+      if(i===0){ctx.beginPath();ctx.arc(0,0,23+n*2,0,Math.PI*2);ctx.stroke();}
+      if(i===1){ctx.beginPath();ctx.arc(0,0,25+n*2,-Math.PI*.35+sig*.05,Math.PI*.35+sig*.05);ctx.stroke();}
+      if(i===2){for(let k=0;k<n;k++){const a=k*Math.PI*2/n+sig*.12;ctx.beginPath();ctx.moveTo(Math.cos(a)*18,Math.sin(a)*18);ctx.lineTo(Math.cos(a)*25,Math.sin(a)*25);ctx.stroke();}}
+    }
+    ctx.fillStyle="#fff";ctx.font="700 7px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";
+    ctx.fillText(comboKey(t),0,-27);
+    ctx.restore();
+  }
+
   function drawTowers(){
     for(const t of state.towers){
-      const d=TYPES[t.type],selected=state.selectedTowers?.includes(t)||t===state.selectedTower;
+      const d=TYPES[t.type],stats=towerStats(t),selected=state.selectedTowers?.includes(t)||t===state.selectedTower;
       if(selected){
         ctx.strokeStyle="rgba(103,232,249,.25)";ctx.lineWidth=2;
         ctx.beginPath();ctx.arc(t.x,t.y,d.range,0,Math.PI*2);ctx.stroke();
@@ -751,6 +803,7 @@ const UNLOCKS={
       ctx.beginPath();ctx.arc(t.x,t.y,20,0,Math.PI*2);ctx.fill();ctx.stroke();
 
       drawTowerLogo(t,d);
+      drawTowerUpgradeVariant(t,d);
 
       const target=nearestTarget(t);
       if(target&&d.damage>0){
@@ -795,6 +848,9 @@ const UNLOCKS={
   function drawTexts(){ctx.textAlign="center";ctx.font="700 13px system-ui";for(const t of state.texts){ctx.globalAlpha=t.life;ctx.fillStyle="#fff";ctx.fillText(t.text,t.x,t.y);}ctx.globalAlpha=1;}
 
   function canvasPos(ev){const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)*W/r.width,y:(ev.clientY-r.top)*H/r.height};}
+  document.getElementById("branchControls")?.addEventListener("click",e=>{
+    const btn=e.target.closest(".branch-button");if(btn)upgradeBranchSelection(Number(btn.dataset.branch));
+  });
   canvas.addEventListener("click",e=>{
     const p=canvasPos(e);
     const tower=[...state.towers].reverse().find(t=>Math.hypot(t.x-p.x,t.y-p.y)<24);
@@ -875,21 +931,7 @@ const UNLOCKS={
     if(e.key.toLowerCase()==="r"&&state.gameOver){reset();startGame();}
   });
   function selectBuild(type){state.selectedBuild=type;document.querySelectorAll(".tower-card").forEach(b=>b.classList.toggle("selected",b.dataset.tower===type));}
-  function upgrade(){
-    const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
-    if(!selected.length)return;
-    const upgradeable=selected.filter(t=>t.level<5);
-    if(!upgradeable.length){toast("ALL SELECTED TOWERS ARE MAX LEVEL");return;}
-    const totalCost=upgradeable.reduce((sum,t)=>sum+Math.floor(TYPES[t.type].cost*(.72+t.level*.46)),0);
-    if(state.gold<totalCost){toast("NEED $"+totalCost+" TO UPGRADE ALL");return;}
-    state.gold-=totalCost;
-    for(const t of upgradeable){
-      const cost=Math.floor(TYPES[t.type].cost*(.72+t.level*.46));
-      t.level++;t.totalSpent+=cost;burst(t.x,t.y,TYPES[t.type].color,18);
-    }
-    toast(upgradeable.length+" TOWERS UPGRADED");
-    updateUI();
-  }
+  function upgrade(){upgradeBranchSelection(0);}
   function selectAllSameType(){
     const t=state.selectedTower||state.selectedTowers?.[0];
     if(!t)return;
@@ -917,14 +959,23 @@ const UNLOCKS={
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
     const t=selected[0],info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton"),replaceBtn=document.getElementById("replaceButton");
     if(t){
-      const d=TYPES[t.type],maxed=selected.filter(x=>x.level>=5).length,upgradeable=selected.length-maxed;
-      const totalCost=selected.filter(x=>x.level<5).reduce((sum,x)=>sum+Math.floor(TYPES[x.type].cost*(.72+x.level*.46)),0);
+      const d=TYPES[t.type],maxed=selected.filter(x=>branchPoints(x)>=5).length,upgradeable=selected.length-maxed;
+      const totalCost=selected.filter(x=>branchPoints(x)<5).reduce((sum,x)=>sum+Math.floor(TYPES[x.type].cost*(.72+branchPoints(x)*.46)),0);
       const levels=selected.map(x=>x.level),sameLevel=levels.every(level=>level===levels[0]);
+      const stats=towerStats(t),ability=stats.ability;
       info.innerHTML=selected.length>1
-        ? "<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · "+upgradeable+" upgradeable · Levels "+(sameLevel?levels[0]:"mixed")+"<br>Click UPGRADE ALL to raise every selected tower by one level.</span>"
-        : "<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(d.damage*(1+(t.level-1)*.25)):"—")+" · Range "+Math.floor(d.range*(1+(t.level-1)*.05))+" · Kills "+t.kills+"</span>";
+        ? "<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · "+upgradeable+" eligible · Upgrade points "+(sameLevel?levels[0]-1:"mixed")+"<br>Each branch specializes one aspect. The third branch locks after two branches are chosen.</span>"
+        : "<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(stats.damage):"—")+" · Range "+Math.floor(stats.range)+" · Kills "+t.kills+"<br><strong>"+ability.name+"</strong>: "+ability.desc+"</span>";
       targetSelect.disabled=selected.length!==1||!d.damage;targetSelect.value=t.targetMode||"furthest";
-      up.disabled=!upgradeable||state.gold<totalCost;up.firstChild.textContent=selected.length>1?"UPGRADE ALL ":"UPGRADE ";document.getElementById("upgradeCost").textContent=!upgradeable?"MAX":"$"+totalCost;
+      up.disabled=!upgradeable||state.gold<totalCost;up.firstChild.textContent="UPGRADE POWER ";document.getElementById("upgradeCost").textContent=!upgradeable?"MAX":"$"+totalCost;
+      const branchBox=document.getElementById("branchControls");
+      if(branchBox){
+        branchBox.innerHTML=BRANCHES.map((b,i)=>{
+          const lv=branchLevels(t)[i],locked=branchLocked(t,i),cost=Math.floor(d.cost*(.72+branchPoints(t)*.46));
+          const eligible=selected.every(x=>!branchLocked(x,i)&&branchLevels(x)[i]<5&&branchPoints(x)<5);
+          return '<button class="branch-button" data-branch="'+i+'" '+((locked||!eligible||branchPoints(t)>=5||state.gold<cost)?'disabled':'')+'><b>'+b.name+' '+lv+'</b><span>'+b.desc+'</span></button>';
+        }).join('');
+      }
       sellBtn.disabled=!selected.length;document.getElementById("sellValue").textContent=selected.length>1?"$"+selected.reduce((sum,x)=>sum+Math.floor(x.totalSpent*.68),0):"$"+Math.floor(t.totalSpent*.68);sellBtn.firstChild.textContent=selected.length>1?"SELL ALL ":"SELL ";
       replaceBtn.disabled=!t||selected.some(x=>x.type===state.selectedBuild);selectAllBtn.disabled=!t;replaceBtn.textContent=selected.length>1?"REPLACE ALL WITH "+TYPES[state.selectedBuild].name.toUpperCase():"REPLACE WITH "+TYPES[state.selectedBuild].name.toUpperCase();
     }else{
