@@ -73,6 +73,12 @@
     <button id="replaceButton" class="secondary replace-button" disabled>REPLACE SELECTED</button>
     <button id="upgradeButton" class="secondary" disabled>UPGRADE TOP <span id="upgradeCost">$—</span></button>
     <button id="abilityButton" class="secondary ability-button" disabled>ACTIVATE ABILITY</button>
+    <div id="paragonPanel" class="paragon-panel" hidden>
+      <b id="paragonTitle">PARAGON</b>
+      <span id="paragonStatus">Degree 1</span>
+      <button id="paragonCreateButton" class="secondary">CREATE PARAGON</button>
+      <div class="paragon-feed"><input id="paragonCash" type="number" min="0" step="50" value="0"><button id="paragonFeedButton" class="secondary">FEED CASH</button></div>
+    </div>
     <button id="sellButton" class="danger" disabled>SELL <span id="sellValue">$—</span></button>
     <div class="target-control"><label for="targetMode">TARGETING</label><select id="targetMode" disabled><option value="furthest">Furthest</option><option value="closest">Closest</option><option value="strongest">Strongest</option><option value="weakest">Weakest</option></select></div>
     <div class="divider"></div>
