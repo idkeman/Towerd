@@ -571,6 +571,29 @@ const UNLOCKS={
     return true;
   }
 
+  function updateParagons(dt){
+    for(const p of Object.values(state.paragons||{})){
+      const def=PARAGONS[p.type],stats=paragonStats({type:p.type});
+      p.cooldown=Math.max(0,(p.cooldown||0)-dt);
+      if(p.cooldown>0)continue;
+      const target=nearestParagonTarget(p,stats.range);
+      if(!target)continue;
+      p.cooldown=stats.rate;
+      const damage=stats.damage;
+      target.hp-=damage;
+      if(stats.splash){
+        for(const e of state.enemies)if(!e.dead&&e!==target&&Math.hypot(e.x-target.x,e.y-target.y)<=stats.splash){e.hp-=damage*.42;if(e.hp<=0)killEnemy(e,p);}
+      }
+      if(target.hp<=0)killEnemy(target,p);
+      burst(p.x,p.y,def.color,3);
+    }
+  }
+  function nearestParagonTarget(p,range){
+    let best=null,bestProgress=-Infinity;
+    for(const e of state.enemies){if(e.dead||Math.hypot(e.x-p.x,e.y-p.y)>range)continue;if(e.progress>bestProgress){best=e;bestProgress=e.progress;}}
+    return best;
+  }
+
   function nearestTarget(t){
     const def=TYPES[t.type];
     const stats=towerStats(t),levelScale=stats.range/(def.range||1);
@@ -775,6 +798,7 @@ const UNLOCKS={
       }
     }
     updateTraps(dt);
+    updateParagons(dt);
 
     for(const s of state.shots){
       if(!s.target||s.target.dead){s.dead=true;continue;}
@@ -948,6 +972,20 @@ const UNLOCKS={
     ctx.fillStyle="#fff";ctx.font="700 7px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";
     ctx.fillText(comboKey(t),0,-27);
     ctx.restore();
+  }
+
+  function drawParagons(){
+    for(const p of Object.values(state.paragons||{})){
+      const d=PARAGONS[p.type],s=paragonStats(p),selected=state.selectedTower===p;
+      ctx.save();ctx.translate(p.x,p.y);
+      ctx.shadowBlur=18+Math.min(40,s.degree);ctx.shadowColor=d.color;
+      ctx.fillStyle="#090d16";ctx.strokeStyle=d.color;ctx.lineWidth=4;
+      ctx.beginPath();ctx.arc(0,0,27+s.degree*.08,0,Math.PI*2);ctx.fill();ctx.stroke();
+      for(let i=0;i<Math.min(12,3+Math.floor(s.degree/8));i++){const a=i*Math.PI*2/Math.min(12,3+Math.floor(s.degree/8));ctx.beginPath();ctx.moveTo(Math.cos(a)*21,Math.sin(a)*21);ctx.lineTo(Math.cos(a)*34,Math.sin(a)*34);ctx.stroke();}
+      ctx.fillStyle="#fff";ctx.font="900 8px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("P"+s.degree,0,0);
+      if(selected){ctx.strokeStyle="rgba(255,255,255,.45)";ctx.beginPath();ctx.arc(0,0,s.range,0,Math.PI*2);ctx.stroke();}
+      ctx.restore();
+    }
   }
 
   function drawTowers(){
