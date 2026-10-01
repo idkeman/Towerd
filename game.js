@@ -479,10 +479,57 @@ const UNLOCKS={
   }
 
   function comboKey(t){return branchLevels(t).join("-");}
-  function comboAbility(t){const [p,r,u]=branchLevels(t),total=p+r+u;if(!total)return {id:"base",name:"Base System",desc:"No special ability yet.",chance:0};const names=[];if(p)names.push(BRANCH_NAMES.power[p-1]);if(r)names.push(BRANCH_NAMES.range[r-1]);if(u)names.push(BRANCH_NAMES.utility[u-1]);const mode=p&&r?"pierce":p&&u?"rupture":r&&u?"control":p?"execute":r?"volley":"nova";const pair=p&&r?"Overdrive":p&&u?"Ruin":r&&u?"Control":names[0];return {id:comboKey(t),name:TYPES[t.type].name+" "+pair+" "+names.join("-"),desc:"Unique combo "+comboKey(t)+" - "+names.join(" + "),chance:Math.min(.36,.08+total*.025),damageMult:.28+p*.08+r*.035+u*.045,radius:22+r*9+u*12,slow:Math.max(.28,.82-u*.09-r*.025),mode,dominant:Math.max(p,r,u)};}
-  function towerStats(t){const d=TYPES[t.type],[p,r,u]=branchLevels(t);return {damage:(d.damage||0)*(1+p*.26+u*.07),range:(d.range||0)*(1+r*.12),rate:(d.rate||1)*Math.pow(.91,p)*Math.pow(.94,r)*Math.pow(.88,u),projectile:(d.projectile||0)*(1+r*.16),splash:(d.splash||0)+u*12,slow:Math.max(.28,(d.slow||1)-u*.07),slowTime:(d.slowTime||0)+u*.45,ability:comboAbility(t)};}
-  function upgradeBranchSelection(index){const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);if(!selected.length)return;if(selected.some(t=>branchLocked(t,index)||branchLevels(t)[index]>=5||branchPoints(t)>=5)){toast("SOME SELECTED TOWERS CANNOT TAKE THIS BRANCH");return;}const costs=selected.map(t=>Math.floor(TYPES[t.type].cost*(.72+branchPoints(t)*.46))),total=costs.reduce((a,b)=>a+b,0);if(state.gold<total){toast("NEED $"+total+" TO UPGRADE ALL");return;}state.gold-=total;selected.forEach((t,i)=>{const levels=branchLevels(t);levels[index]++;t.branches=levels;t.level=1+branchPoints(t);t.totalSpent+=costs[i];burst(t.x,t.y,BRANCHES[index].color,14);});toast(selected.length+" TOWER"+(selected.length===1?"":"S")+" - "+BRANCHES[index].name+" +1");updateUI();}
+  function comboAbility(t){
+    const [p,m,b]=branchLevels(t),total=p+m+b;
+    if(!total)return {id:"base",name:"BASE",desc:"No path ability yet.",chance:0};
+    const names=[];if(p)names.push(BRANCH_NAMES.power[p-1]);if(m)names.push("ACTIVATED");if(b)names.push(BRANCH_NAMES.utility[b-1]);
+    return {id:comboKey(t),name:TYPES[t.type].name+" "+names.join(" + "),desc:"Unique "+comboKey(t)+" configuration",chance:Math.min(.4,.06+total*.025),damageMult:.22+p*.07+m*.04+b*.045,radius:20+b*12,slow:Math.max(.3,.85-b*.08),mode:p&&b?"rupture":p&&m?"pierce":m&&b?"control":p?"execute":b?"nova":"volley",dominant:Math.max(p,m,b)};
+  }
+  function towerStats(t){
+    const d=TYPES[t.type],[top,mid,bot]=branchLevels(t);
+    const ability=comboAbility(t);
+    return {
+      damage:(d.damage||0)*(1+top*.22+bot*.06),
+      range:(d.range||0)*(1+top*.06+bot*.08),
+      rate:(d.rate||1)*Math.pow(.94,top)*Math.pow(.86,mid)*Math.pow(.93,bot),
+      projectile:(d.projectile||0)*(1+top*.05+bot*.12),
+      splash:(d.splash||0)+bot*10,
+      slow:Math.max(.25,(d.slow||1)-bot*.07),
+      slowTime:(d.slowTime||0)+bot*.4,
+      ability
+    };
+  }
+  function upgradeBranchSelection(index){
+    const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
+    if(!selected.length)return;
+    const invalid=selected.find(t=>{
+      const next=branchLevels(t)[index]+1;
+      return !canUpgradeBranch(t,index)||!isTierUnlocked(t.type,index,next)||(next===5&&!canPlaceTier5(t.type));
+    });
+    if(invalid){toast("PATH LOCKED, TIER NOT UNLOCKED, OR TIER 5 ALREADY PLACED");return;}
+    const costs=selected.map(t=>Math.floor(TYPES[t.type].cost*(.5+branchLevels(t)[index]*.38))),total=costs.reduce((a,b)=>a+b,0);
+    if(state.gold<total){toast("NEED $"+total+" TO UPGRADE ALL");return;}
+    state.gold-=total;
+    selected.forEach((t,i)=>{const levels=branchLevels(t);levels[index]++;t.branches=levels;t.level=1+Math.max(...levels);t.totalSpent+=costs[i];burst(t.x,t.y,BRANCHES[index].color,14);});
+    toast(selected.length+" TOWER"+(selected.length===1?"":"S")+" - "+PATH_NAMES[index]+" "+branchLevels(selected[0])[index]);updateUI();
+  }
   function upgrade(){upgradeBranchSelection(0);}
+  function activateTowerAbility(t){
+    const [,mid]=branchLevels(t);if(mid<1){toast("MIDDLE PATH REQUIRED");return;}
+    const now=state.time;if((t.abilityCooldown||0)>now){toast("ABILITY COOLDOWN");return;}
+    const duration=2.5+mid*1.5;t.abilityCooldown=now+14-mid*1.25;
+    if(mid===1){
+      t.abilityBuffUntil=now+duration;t.abilityBuff=.48;
+      floatText(t.x,t.y-30,"OVERDRIVE");burst(t.x,t.y,BRANCHES[1].color,18);
+    }else if(mid===2){
+      const cash=20+mid*15;state.gold+=cash;floatText(t.x,t.y-30,"+$"+cash);burst(t.x,t.y,BRANCHES[1].color,25);
+    }else{
+      for(const e of state.enemies){if(e.dead)continue;e.hp-=Math.floor((TYPES[t.type].damage||25)*(1+mid*.9));if(mid>=4){e.slow=.35;e.slowUntil=now+3;}if(e.hp<=0)killEnemy(e,t);}
+      state.shake=Math.max(state.shake,8);burst(t.x,t.y,BRANCHES[1].color,35);floatText(t.x,t.y-30,mid===5?"ULTIMATE":"BLAST");
+    }
+    if(mid>=4){state.enemies.forEach(e=>{if(!e.dead)e.slow=Math.min(e.slow,.45);});}
+    updateUI();
+  }
   function placeTower(x,y){
     if(!state.started||state.gameOver||state.won)return;
     if(!isUnlocked(state.selectedBuild)){toast("TOWER LOCKED");return;}
