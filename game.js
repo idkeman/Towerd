@@ -1045,6 +1045,8 @@ const UNLOCKS={
   function drawTexts(){ctx.textAlign="center";ctx.font="700 13px system-ui";for(const t of state.texts){ctx.globalAlpha=t.life;ctx.fillStyle="#fff";ctx.fillText(t.text,t.x,t.y);}ctx.globalAlpha=1;}
 
   function canvasPos(ev){const r=canvas.getBoundingClientRect();return{x:(ev.clientX-r.left)*W/r.width,y:(ev.clientY-r.top)*H/r.height};}
+  document.getElementById("paragonCreateButton")?.addEventListener("click",()=>{const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[]));if(selected.length===1)createParagon(selected[0].type,0);});
+  document.getElementById("paragonFeedButton")?.addEventListener("click",()=>{const selected=state.selectedTower;if(!selected)return;const input=document.getElementById("paragonCash"),cash=Math.max(0,Math.floor(Number(input.value)||0));feedParagon(selected.type,cash);});
   document.getElementById("towerUpgradePaths")?.addEventListener("click",e=>{
     const btn=e.target.closest(".tier-unlock");if(!btn)return;
     unlockTier(btn.dataset.unlockType,Number(btn.dataset.unlockPath),Number(btn.dataset.unlockTier));
@@ -1158,6 +1160,16 @@ const UNLOCKS={
     const t=selected[0],info=document.getElementById("towerInfo"),up=document.getElementById("upgradeButton"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton"),replaceBtn=document.getElementById("replaceButton"),branchBox=document.getElementById("branchControls");
     if(t){
       const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;renderTowerUpgradeMenu();
+      const paragonPanel=document.getElementById("paragonPanel");
+      if(paragonPanel){
+        const eligible=PARAGONS[t.type]&&allTier5Unlocked(t.type)&&!paragonState(t.type)&&levels.includes(5);
+        const existing=paragonState(t.type),degree=existing?paragonDegree(t.type):0;
+        paragonPanel.hidden=!eligible&&!existing;
+        document.getElementById("paragonTitle").textContent=existing?PARAGONS[t.type].name:PARAGONS[t.type]?.name||"PARAGON";
+        document.getElementById("paragonStatus").textContent=existing?"Degree "+degree+" · Sacrifice "+Math.floor(existing.sacrificeValue)+" + $"+Math.floor(existing.extraCash):"All 3 Tier 5 paths unlocked";
+        document.getElementById("paragonCreateButton").disabled=!eligible;
+        document.getElementById("paragonCreateButton").textContent=eligible?"CREATE PARAGON ($"+PARAGONS[t.type].cost+")":"PARAGON CREATED";
+      }
       const powerEligible=selected.every(x=>!branchLocked(x,0)&&branchLevels(x)[0]<5&&branchPoints(x)<5);
       const powerCost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.72+branchPoints(x)*.46)),0);
       info.innerHTML=selected.length>1?"<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · Shift-click to exclude individual towers. Two branches may be used; the third then locks.</span>":"<b>"+d.name+" · "+comboKey(t)+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(stats.damage):"—")+" · Range "+Math.floor(stats.range)+" · Kills "+t.kills+"<br><strong>"+ability.name+"</strong>: "+ability.desc+"</span>";
