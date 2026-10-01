@@ -1312,7 +1312,11 @@ const UNLOCKS={
     unlockTier(btn.dataset.unlockType,Number(btn.dataset.unlockPath),Number(btn.dataset.unlockTier));
   });
   document.getElementById("branchControls")?.addEventListener("click",e=>{
-    const btn=e.target.closest(".branch-button");if(btn)upgradeBranchSelection(Number(btn.dataset.branch));
+    const btn=e.target.closest(".branch-button");
+    if(!btn||btn.disabled)return;
+    e.preventDefault();
+    e.stopPropagation();
+    upgradeBranchSelection(Number(btn.dataset.branch));
   });
   canvas.addEventListener("click",e=>{
     const p=canvasPos(e);
@@ -1490,7 +1494,15 @@ const UNLOCKS={
       }
 
       up.disabled=!powerEligible||!selected.every(x=>isTierUnlocked(x.type,0,branchLevels(x)[0]+1))||state.gold<powerCost;up.firstChild.textContent="▲ ";document.getElementById("upgradeCost").textContent=!powerEligible?"—":"$"+powerCost;
-      if(branchBox)branchBox.innerHTML=BRANCHES.map((b,i)=>{const lv=levels[i],next=lv+1,locked=branchLocked(t,i),eligible=selected.every(x=>canUpgradeBranch(x,i)&&isTierUnlocked(x.type,i,branchLevels(x)[i]+1)),cost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.5+branchLevels(x)[i]*.38)),0),disabled=locked||!eligible||state.gold<cost,label=(i===0?"▲":i===1?"⚡":"▼")+" "+(lv+1);return "<button class='branch-button "+(locked?"branch-locked":"")+"' data-branch='"+i+"' "+(disabled?"disabled":"")+"><b>"+label+" · Lv."+lv+"</b><span>"+b.desc+" · $"+cost+"</span></button>";}).join("");
+      if(branchBox)branchBox.innerHTML=BRANCHES.map((b,i)=>{
+        const lv=levels[i],next=lv+1;
+        const locked=selected.some(x=>branchLocked(x,i));
+        const eligible=selected.length>0&&selected.every(x=>canUpgradeBranch(x,i)&&isTierUnlocked(x.type,i,branchLevels(x)[i]+1));
+        const cost=selected.reduce((sum,x)=>sum+Math.floor(TYPES[x.type].cost*(.5+branchLevels(x)[i]*.38)),0);
+        const disabled=locked||!eligible||state.gold<cost;
+        const label=(i===0?"▲ POWER":i===1?"⚡ MIDDLE":"▼ BOTTOM")+" "+next;
+        return "<button type='button' class='branch-button "+(locked?"branch-locked":"")+"' data-branch='"+i+"' "+(disabled?"disabled":"")+"><b>"+label+" · Lv."+lv+"</b><span>"+b.desc+" · $"+cost+"</span></button>";
+      }).join("");
       sellBtn.disabled=false;document.getElementById("sellValue").textContent=selected.length>1?"$"+selected.reduce((sum,x)=>sum+Math.floor(x.totalSpent*.68),0):"$"+Math.floor(t.totalSpent*.68);sellBtn.firstChild.textContent="♻ ";selectAllBtn.disabled=false;replaceBtn.disabled=selected.some(x=>x.type===state.selectedBuild);replaceBtn.textContent="↻";
     }else{
       info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";selectAllBtn.disabled=true;replaceBtn.disabled=true;replaceBtn.textContent="REPLACE SELECTED";document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";if(branchBox)branchBox.innerHTML="";
