@@ -54,62 +54,61 @@
         <div class="controls"><span><kbd>1</kbd> Dart</span><span><kbd>2</kbd> Cannon</span><span><kbd>3</kbd> Frost</span><span><kbd>Space</kbd> Start wave</span></div>
       </div>
     </div>
-  </div>
-  <section id="controlPanel" class="control-panel wave-mode">
-    <div class="control-modebar">
-      <span id="controlModeLabel">WAVE SETTINGS</span>
+    <section id="controlPanel" class="control-panel wave-mode">
+    <div class="control-modebar" aria-label="Controls">
+      <span id="controlModeLabel" aria-hidden="true">◒</span>
       <div class="control-mode-actions">
-        <button type="button" id="buildModeButton" class="secondary compact">BUILD MODE</button>
-        <button type="button" id="waveModeButton" class="secondary compact">WAVE SETTINGS</button>
+        <button type="button" id="buildModeButton" class="secondary icon-button compact" aria-label="Build mode" title="Build mode">⌂</button>
+        <button type="button" id="waveModeButton" class="secondary icon-button compact" aria-label="Wave settings" title="Wave settings">▶</button>
       </div>
     </div>
     <div id="waveSettings" class="control-view active">
-      <div class="section-title">WAVE SETTINGS</div>
-      <div class="wave-controls"><button id="waveButton" class="primary compact">START WAVE</button><button id="speedButton" class="secondary compact">1× SPEED</button></div>
-      <button id="autoWaveButton" class="secondary compact auto-wave">AUTO WAVES: OFF</button>
+      <div class="section-title" aria-hidden="true">◒</div>
+      <div class="wave-controls"><button id="waveButton" class="primary compact icon-button" aria-label="Start wave" title="Start wave">▶</button><button id="speedButton" class="secondary compact icon-button" aria-label="Game speed" title="Game speed">1×</button></div>
+      <button id="autoWaveButton" class="secondary compact auto-wave icon-button" aria-label="Automatic waves" title="Automatic waves">⟳</button>
       <div class="save-controls">
-        <button id="saveButton" class="secondary compact">SAVE GAME</button>
-        <button id="clearSaveButton" class="danger compact" disabled>DELETE SAVE</button>
+        <button id="saveButton" class="secondary compact icon-button" aria-label="Save game" title="Save game">💾</button>
+        <button id="clearSaveButton" class="danger compact icon-button" aria-label="Delete save" title="Delete save" disabled>🗑</button>
       </div>
       <div class="wave-progress"><div id="waveProgressBar"></div></div>
       <div class="tip">Tip: towers can cover both sides of the road. Spike Traps automatically plant on the nearest road segment and trigger when enemies step on them.</div>
     </div>
     <div id="buildSettings" class="control-view">
-      <div class="section-title">BUILD MODE</div>
-      <div class="section-title">BUILD MENU</div>
+      <div class="section-title" aria-hidden="true">⌂</div>
       <div id="towerMenu"><button class="tower-card" data-tower="dart"><span class="tower-icon"></span><span><b>Dart</b><small>Fast precision fire</small></span><strong>$75</strong></button><button class="tower-card" data-tower="cannon"><span class="tower-icon"></span><span><b>Cannon</b><small>Heavy splash damage</small></span><strong>$150</strong></button><button class="tower-card" data-tower="frost"><span class="tower-icon"></span><span><b>Frost</b><small>Slows enemies</small></span><strong>$125</strong></button><button class="tower-card" data-tower="sniper"><span class="tower-icon"></span><span><b>Sniper</b><small>Extreme range</small></span><strong>$190</strong></button><button class="tower-card" data-tower="machine"><span class="tower-icon"></span><span><b>Machine Gun</b><small>Very rapid fire</small></span><strong>$170</strong></button><button class="tower-card" data-tower="flame"><span class="tower-icon"></span><span><b>Flame</b><small>Area damage</small></span><strong>$205</strong></button><button class="tower-card" data-tower="tesla"><span class="tower-icon"></span><span><b>Tesla</b><small>Electric fire</small></span><strong>$235</strong></button><button class="tower-card" data-tower="poison"><span class="tower-icon"></span><span><b>Venom</b><small>Reliable damage</small></span><strong>$155</strong></button><button class="tower-card" data-tower="missile"><span class="tower-icon"></span><span><b>Missile</b><small>Huge explosions</small></span><strong>$260</strong></button><button class="tower-card" data-tower="railgun"><span class="tower-icon"></span><span><b>Railgun</b><small>Long-range power</small></span><strong>$345</strong></button><button class="tower-card" data-tower="mortar"><span class="tower-icon"></span><span><b>Mortar</b><small>Artillery splash</small></span><strong>$230</strong></button><button class="tower-card" data-tower="boomerang"><span class="tower-icon"></span><span><b>Boomerang</b><small>Cluster sweeper</small></span><strong>$145</strong></button><button class="tower-card" data-tower="laser"><span class="tower-icon"></span><span><b>Laser</b><small>Focused beam</small></span><strong>$300</strong></button><button class="tower-card" data-tower="plasma"><span class="tower-icon"></span><span><b>Plasma</b><small>Energy blasts</small></span><strong>$325</strong></button><button class="tower-card" data-tower="crystal"><span class="tower-icon"></span><span><b>Crystal</b><small>Slowing bursts</small></span><strong>$250</strong></button><button class="tower-card" data-tower="shockwave"><span class="tower-icon"></span><span><b>Shockwave</b><small>Disrupts movement</small></span><strong>$290</strong></button><button class="tower-card" data-tower="drone"><span class="tower-icon"></span><span><b>Drone</b><small>Autonomous fire</small></span><strong>$245</strong></button><button class="tower-card" data-tower="bunker"><span class="tower-icon"></span><span><b>Bunker</b><small>Short-range power</small></span><strong>$275</strong></button><button class="tower-card" data-tower="chrono"><span class="tower-icon"></span><span><b>Chrono</b><small>Severe slow</small></span><strong>$325</strong></button><button class="tower-card" data-tower="gravity"><span class="tower-icon"></span><span><b>Gravity</b><small>Group control</small></span><strong>$350</strong></button><button class="tower-card" data-tower="meteor"><span class="tower-icon"></span><span><b>Meteor</b><small>Endgame artillery</small></span><strong>$440</strong></button><button class="tower-card" data-tower="bank"><span class="tower-icon"></span><span><b>Gold Mine</b><small>Passively generates gold</small></span><strong>$225</strong></button><button class="tower-card" data-tower="trap"><span class="tower-icon"></span><span><b>Spike Trap</b><small>Plants ground spikes near the tower</small></span><strong>$210</strong></button><button class="tower-card locked-tower" data-tower="ember" data-locked="true"><span class="tower-icon">🔒</span><span><b>Inferno</b><small>Rank 2 + 25 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="ballista" data-locked="true"><span class="tower-icon">🔒</span><span><b>Ballista</b><small>Rank 3 + 35 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="warden" data-locked="true"><span class="tower-icon">🔒</span><span><b>Warden</b><small>Rank 4 + 50 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="oracle" data-locked="true"><span class="tower-icon">🔒</span><span><b>Oracle</b><small>Rank 5 + 65 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="harvester" data-locked="true"><span class="tower-icon">🔒</span><span><b>Harvester</b><small>Rank 6 + 80 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="frostbite" data-locked="true"><span class="tower-icon">🔒</span><span><b>Frostbite</b><small>Rank 7 + 100 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="arc" data-locked="true"><span class="tower-icon">🔒</span><span><b>Arc Caster</b><small>Rank 8 + 125 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="volley" data-locked="true"><span class="tower-icon">🔒</span><span><b>Volley</b><small>Rank 9 + 150 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="sentinel" data-locked="true"><span class="tower-icon">🔒</span><span><b>Sentinel</b><small>Rank 10 + 175 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="beacon" data-locked="true"><span class="tower-icon">🔒</span><span><b>Beacon</b><small>Rank 11 + 200 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="vortex" data-locked="true"><span class="tower-icon">🔒</span><span><b>Vortex</b><small>Rank 12 + 230 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="siege" data-locked="true"><span class="tower-icon">🔒</span><span><b>Siege Engine</b><small>Rank 13 + 260 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="swarm" data-locked="true"><span class="tower-icon">🔒</span><span><b>Swarm Nest</b><small>Rank 14 + 300 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="sun" data-locked="true"><span class="tower-icon">🔒</span><span><b>Sun Core</b><small>Rank 15 + 350 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="void" data-locked="true"><span class="tower-icon">🔒</span><span><b>Void Cannon</b><small>Rank 16 + 400 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="titan" data-locked="true"><span class="tower-icon">🔒</span><span><b>Titan</b><small>Rank 17 + 450 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="prism" data-locked="true"><span class="tower-icon">🔒</span><span><b>Prism</b><small>Rank 18 + 500 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="plague" data-locked="true"><span class="tower-icon">🔒</span><span><b>Plague Doctor</b><small>Rank 19 + 550 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="overdrive" data-locked="true"><span class="tower-icon">🔒</span><span><b>Overdrive</b><small>Rank 20 + 625 Shards</small></span><strong>LOCKED</strong></button><button class="tower-card locked-tower" data-tower="doomsday" data-locked="true"><span class="tower-icon">🔒</span><span><b>Doomsday</b><small>Rank 25 + 750 Shards</small></span><strong>LOCKED</strong></button></div>
 
-      <div class="progression-panel"><div class="progression-head"><span>COMMAND RANK</span><b id="profileLevel">1</b></div><div class="progression-xp"><span id="profileXp">0 / 100 XP</span></div><div class="profile-progress"><div id="profileProgressBar"></div></div><small id="profilePerks">+0 starting gold · +0 lives</small></div>
+      <div class="progression-panel" title="Command rank"><div class="progression-head"><span aria-hidden="true">★</span><b id="profileLevel">1</b></div><div class="progression-xp"><span id="profileXp">0 / 100 XP</span></div><div class="profile-progress"><div id="profileProgressBar"></div></div><small id="profilePerks">+0 starting gold · +0 lives</small></div>
       <div class="divider"></div>
 
     </div>
     <div id="towerSettings" class="control-view">
-      <div class="section-title">TOWER UPGRADES</div>
+      <div class="section-title" aria-hidden="true">⬆</div>
       <div id="towerUpgradeMenu" class="tower-upgrade-menu">
         <div class="tower-xp-head"><b id="towerUpgradeName">Select a tower type</b><span id="towerUpgradeXP">0 XP</span></div>
         <div id="towerUpgradePaths"></div>
       </div>
       <div class="divider"></div>
 
-      <div class="section-title">SELECTED TOWER</div>
+      <div class="section-title" aria-hidden="true">●</div>
       <div id="towerInfo" class="tower-info"><b>No tower selected</b><span>Click a tower to inspect it.</span></div>
       <div id="branchControls" class="branch-controls" aria-label="Tower upgrade branches"></div>
-      <button id="selectAllSameButton" class="secondary multi-select-button" disabled>SELECT ALL SAME TYPE</button>
-      <button id="replaceButton" class="secondary replace-button" disabled>REPLACE SELECTED</button>
-      <button id="upgradeButton" class="secondary" disabled>UPGRADE TOP <span id="upgradeCost">$—</span></button>
-      <button id="abilityButton" class="secondary ability-button" disabled>ACTIVATE ABILITY</button>
+      <button id="selectAllSameButton" class="secondary icon-button multi-select-button" aria-label="Select all same type" title="Select all same type" disabled>◎</button>
+      <button id="replaceButton" class="secondary icon-button replace-button" aria-label="Replace selected" title="Replace selected" disabled>↻</button>
+      <button id="upgradeButton" class="secondary icon-button" aria-label="Upgrade top path" title="Upgrade top path" disabled>⬆ <span id="upgradeCost">$—</span></button>
+      <button id="abilityButton" class="secondary icon-button ability-button" aria-label="Activate ability" title="Activate ability" disabled>⚡</button>
       <div id="paragonPanel" class="paragon-panel" hidden>
-        <b id="paragonTitle">PARAGON</b>
-        <span id="paragonStatus">Degree 1</span>
-        <button id="paragonCreateButton" class="secondary">CREATE PARAGON</button>
-        <div class="paragon-feed"><input id="paragonCash" type="number" min="0" step="50" value="0"><button id="paragonFeedButton" class="secondary">FEED CASH</button></div>
+        <b id="paragonTitle" aria-hidden="true">◈</b>
+        <span id="paragonStatus">◈1</span>
+        <button id="paragonCreateButton" class="secondary icon-button" aria-label="Create paragon" title="Create paragon">✦</button>
+        <div class="paragon-feed"><input id="paragonCash" type="number" min="0" step="50" value="0" aria-label="Paragon cash"><button id="paragonFeedButton" class="secondary icon-button" aria-label="Feed cash" title="Feed cash">＄</button></div>
       </div>
-      <button id="sellButton" class="danger" disabled>SELL <span id="sellValue">$—</span></button>
-      <div class="target-control"><label for="targetMode">TARGETING</label><select id="targetMode" disabled><option value="furthest">Furthest</option><option value="closest">Closest</option><option value="strongest">Strongest</option><option value="weakest">Weakest</option></select></div>
+      <button id="sellButton" class="danger icon-button" aria-label="Sell" title="Sell" disabled>♻ <span id="sellValue">$—</span></button>
+      <div class="target-control"><label for="targetMode" aria-label="Targeting">⌖</label><select id="targetMode" disabled><option value="furthest">Furthest</option><option value="closest">Closest</option><option value="strongest">Strongest</option><option value="weakest">Weakest</option></select></div>
       <div class="divider"></div>
 
     </div>
-  </section>/section>
+    </section>
+  </div>
 <footer><span>TOWERD v1.0</span><span>Mouse: build/select • R: restart after defeat • Esc: cancel build</span></footer>
 </main>
 <script src="start.js?v=20261001-bootfix"></script>
