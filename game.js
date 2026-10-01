@@ -268,12 +268,7 @@ const UNLOCKS={
         betweenTimer:Number(save.betweenTimer)||0,time:Number(save.time)||0,shake:0
       };
 
-      state.towers=state.towers.filter(t=>TYPES[t.type]).map(t=>({
-        type:t.type,x:Number(t.x),y:Number(t.y),level:1+Math.min(5,branchLevels(t).reduce((a,b)=>a+b,0)),
-        branches:Array.isArray(t.branches)?t.branches.map(v=>Math.max(0,Math.min(5,Number(v)||0))):[0,0,0],
-        cooldown:Number(t.cooldown)||0,totalSpent:Number(t.totalSpent)||TYPES[t.type].cost,
-        kills:Number(t.kills)||0,targetMode:t.targetMode||"furthest"
-      }));
+      state.towers=state.towers.filter(t=>TYPES[t.type]).map(t=>{const branches=Array.isArray(t.branches)?t.branches.map(v=>Math.max(0,Math.min(5,Number(v)||0))):[Math.max(0,Math.min(5,(Number(t.level)||1)-1)),0,0];return {type:t.type,x:Number(t.x),y:Number(t.y),level:1+Math.min(5,branches.reduce((a,b)=>a+b,0)),branches,cooldown:Number(t.cooldown)||0,totalSpent:Number(t.totalSpent)||TYPES[t.type].cost,kills:Number(t.kills)||0,targetMode:t.targetMode||"furthest"};});
       state.traps=state.traps.filter(t=>Number.isFinite(Number(t.x))&&Number.isFinite(Number(t.y))).map(t=>({
         x:Number(t.x),y:Number(t.y),damage:Number(t.damage)||TYPES.trap.damage,life:Number(t.life)||TYPES.trap.trapLife,
         slow:Number(t.slow)||TYPES.trap.slow,slowTime:Number(t.slowTime)||TYPES.trap.slowTime,towerType:t.towerType||"trap",dead:false
@@ -436,6 +431,16 @@ const UNLOCKS={
     updateUI();
   }
 
+  const BRANCHES=[{id:"power",name:"POWER",color:"#fb7185",desc:"Damage, critical hits, and burst"},{id:"range",name:"RANGE",color:"#60a5fa",desc:"Range, projectile speed, and precision"},{id:"utility",name:"UTILITY",color:"#a3e635",desc:"Control, splash, and special effects"}];
+  const BRANCH_NAMES={power:["Overcharge","Execution","Annihilation","Ruin","Cataclysm"],range:["Longshot","Vector","Horizon","Rail","Omnipoint"],utility:["Disrupt","Control","Catalyst","Singularity","Paradox"]};
+  function branchLevels(t){const b=Array.isArray(t.branches)?t.branches:[0,0,0];return [Number(b[0])||0,Number(b[1])||0,Number(b[2])||0];}
+  function branchPoints(t){return branchLevels(t).reduce((a,b)=>a+b,0);}
+  function branchLocked(t,index){return branchLevels(t).filter((v,i)=>i!==index&&v>0).length>=2;}
+  function comboKey(t){return branchLevels(t).join("-");}
+  function comboAbility(t){const [p,r,u]=branchLevels(t),total=p+r+u;if(!total)return {id:"base",name:"Base System",desc:"No special ability yet.",chance:0};const names=[];if(p)names.push(BRANCH_NAMES.power[p-1]);if(r)names.push(BRANCH_NAMES.range[r-1]);if(u)names.push(BRANCH_NAMES.utility[u-1]);const mode=p&&r?"pierce":p&&u?"rupture":r&&u?"control":p?"execute":r?"volley":"nova";const pair=p&&r?"Overdrive":p&&u?"Ruin":r&&u?"Control":names[0];return {id:comboKey(t),name:TYPES[t.type].name+" "+pair+" "+names.join("-"),desc:"Unique combo "+comboKey(t)+" - "+names.join(" + "),chance:Math.min(.36,.08+total*.025),damageMult:.28+p*.08+r*.035+u*.045,radius:22+r*9+u*12,slow:Math.max(.28,.82-u*.09-r*.025),mode,dominant:Math.max(p,r,u)};}
+  function towerStats(t){const d=TYPES[t.type],[p,r,u]=branchLevels(t);return {damage:(d.damage||0)*(1+p*.26+u*.07),range:(d.range||0)*(1+r*.12),rate:(d.rate||1)*Math.pow(.91,p)*Math.pow(.94,r)*Math.pow(.88,u),projectile:(d.projectile||0)*(1+r*.16),splash:(d.splash||0)+u*12,slow:Math.max(.28,(d.slow||1)-u*.07),slowTime:(d.slowTime||0)+u*.45,ability:comboAbility(t)};}
+  function upgradeBranchSelection(index){const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);if(!selected.length)return;if(selected.some(t=>branchLocked(t,index)||branchLevels(t)[index]>=5||branchPoints(t)>=5)){toast("SOME SELECTED TOWERS CANNOT TAKE THIS BRANCH");return;}const costs=selected.map(t=>Math.floor(TYPES[t.type].cost*(.72+branchPoints(t)*.46))),total=costs.reduce((a,b)=>a+b,0);if(state.gold<total){toast("NEED $"+total+" TO UPGRADE ALL");return;}state.gold-=total;selected.forEach((t,i)=>{const levels=branchLevels(t);levels[index]++;t.branches=levels;t.level=1+branchPoints(t);t.totalSpent+=costs[i];burst(t.x,t.y,BRANCHES[index].color,14);});toast(selected.length+" TOWER"+(selected.length===1?"":"S")+" - "+BRANCHES[index].name+" +1");updateUI();}
+  function upgrade(){upgradeBranchSelection(0);}
   function placeTower(x,y){
     if(!state.started||state.gameOver||state.won)return;
     if(!isUnlocked(state.selectedBuild)){toast("TOWER LOCKED");return;}
@@ -541,7 +546,7 @@ const UNLOCKS={
         if(!e.dead&&Math.hypot(e.x-tr.x,e.y-tr.y)<22){
           e.hp-=tr.damage;e.slow=tr.slow;e.slowUntil=state.time+tr.slowTime;tr.dead=true;
           burst(tr.x,tr.y,TYPES.trap.color,16);floatText(tr.x,tr.y-16,"SPIKE -"+Math.floor(tr.damage));
-          if(e.hp<=0)killEnemy(e,null);break;
+          triggerTowerAbility({tower:tr.tower,ability:tr.ability},e);if(e.hp<=0)killEnemy(e,tr.tower);break;
         }
       }
     }
@@ -585,7 +590,7 @@ const UNLOCKS={
       for(const x of state.enemies){
         if(!x.dead&&Math.hypot(x.x-e.x,x.y-e.y)<=a.radius){
           x.hp-=extra;
-          x.slow=a.slow;x.slowUntil=state.time+s.tower.type.length*.03+1.2;
+          x.slow=a.slow;x.slowUntil=state.time+1.2+a.dominant*.3;
           if(x.hp<=0)killEnemy(x,s.tower);
         }
       }
