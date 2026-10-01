@@ -972,13 +972,76 @@ const UNLOCKS={
         ? "<b>"+selected.length+" × "+d.name+"</b><span>Multi-selected · "+upgradeable+" eligible · Upgrade points "+(sameLevel?levels[0]-1:"mixed")+"<br>Each branch specializes one aspect. The third branch locks after two branches are chosen.</span>"
         : "<b>"+d.name+" · Lv."+t.level+"</b><span>"+d.desc+"<br>Damage "+(d.damage?Math.floor(stats.damage):"—")+" · Range "+Math.floor(stats.range)+" · Kills "+t.kills+"<br><strong>"+ability.name+"</strong>: "+ability.desc+"</span>";
       targetSelect.disabled=selected.length!==1||!d.damage;targetSelect.value=t.targetMode||"furthest";
-      up.disabled=!upgradeable||state.gold<totalCost;up.firstChild.textContent="UPGRADE POWER ";document.getElementById("upgradeCost").textContent=!upgradeable?"MAX":"$"+totalCost;
+      const powerEligible=selected.every(x=>!branchLocked(x,0)&&branchLevels(x)[0]<5&&branchPoints(x)<5);
+      const powerCost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.72+branchPoints(x)*.46)),0);
+      up.disabled=!powerEligible||state.gold<powerCost;up.firstChild.textContent="UPGRADE POWER ";document.getElementById("upgradeCost").textContent=!powerEligible?"LOCKED":"$"+powerCost;
       const branchBox=document.getElementById("branchControls");
       if(branchBox){
         branchBox.innerHTML=BRANCHES.map((b,i)=>{
-          const lv=branchLevels(t)[i],locked=branchLocked(t,i),cost=Math.floor(d.cost*(.72+branchPoints(t)*.46));
+          const levels=branchLevels(t),lv=levels[i],locked=branchLocked(t,i);
           const eligible=selected.every(x=>!branchLocked(x,i)&&branchLevels(x)[i]<5&&branchPoints(x)<5);
-          return '<button class="branch-button" data-branch="'+i+'" '+((locked||!eligible||branchPoints(t)>=5||state.gold<cost)?'disabled':'')+'><b>'+b.name+' '+lv+'</b><span>'+b.desc+'</span></button>';
+          const cost=selected.reduce((sum,x)=>sum+Math.floor(d.cost*(.72+branchPoints(x)*.46)),0);
+          const label=selected.length>1?b.name+" +1 ALL":b.name+" +1";
+          return '<button class="branch-button '+(locked?'branch-locked':'')+'" data-branch="'+i+'" '+((locked||!eligible||state.gold<cost)?'disabled':'')+'><b>'+label+' · Lv.'+lv+'</b><span>'+b.desc+' · 
+      sellBtn.disabled=!selected.length;document.getElementById("sellValue").textContent=selected.length>1?"$"+selected.reduce((sum,x)=>sum+Math.floor(x.totalSpent*.68),0):"$"+Math.floor(t.totalSpent*.68);sellBtn.firstChild.textContent=selected.length>1?"SELL ALL ":"SELL ";
+      replaceBtn.disabled=!t||selected.some(x=>x.type===state.selectedBuild);selectAllBtn.disabled=!t;replaceBtn.textContent=selected.length>1?"REPLACE ALL WITH "+TYPES[state.selectedBuild].name.toUpperCase():"REPLACE WITH "+TYPES[state.selectedBuild].name.toUpperCase();
+    }else{
+      info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";
+      up.disabled=true;sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";selectAllBtn.disabled=true;replaceBtn.disabled=true;replaceBtn.textContent="REPLACE SELECTED";document.getElementById("upgradeCost").textContent="$—";document.getElementById("sellValue").textContent="$—";
+    }
+    const progress=state.spawnTotal?Math.min(1,1-(state.spawnLeft/state.spawnTotal)):(state.waveActive?0:1);
+    document.getElementById("waveProgressBar").style.width=(progress*100)+"%";updateProgressionUI();
+    updateProgressionUI();
+    const wb=document.getElementById("waveButton");wb.textContent=state.waveActive?"WAVE IN PROGRESS":state.wave>=100?"COMPLETE":"START WAVE";wb.disabled=state.waveActive||state.wave>=100;
+  }
+
+  let toastTimer=0;
+  function toast(msg){const el=document.getElementById("message");el.textContent=msg;el.classList.remove("hidden");toastTimer=1.5;}
+  function overlayResult(title,body,button){
+    const o=document.getElementById("startOverlay");o.classList.remove("hidden");
+    o.innerHTML='<div class="panel hero-panel"><div class="eyebrow">TOWERD</div><h1>'+title+'</h1><p>'+body+'</p><button id="resultButton" class="primary">'+button+'</button></div>';
+    document.getElementById("resultButton").onclick=()=>{reset();startGame();};
+  }
+  function lose(){state.gameOver=true;state.waveActive=false;overlayResult("Defense breached.","Your base was overrun on wave "+state.wave+". Rebuild your defense and try again.","RESTART");}
+  function win(){state.won=true;state.waveActive=false;overlayResult("You held the line.","One hundred waves defeated. The base is secure.","PLAY AGAIN");}
+
+  let last=performance.now();
+  function applyOfflineProgress(savedAt){
+    const away=Math.max(0,Math.floor((Date.now()-Number(savedAt||Date.now()))/1000));
+    const cap=Math.min(43200,(2+profile.level*.5)*3600);
+    const seconds=Math.min(away,cap);
+    if(seconds<10)return;
+    const income=state.towers.reduce((sum,t)=>{
+      if(t.type!=="bank")return sum;
+      return sum+(seconds/TYPES.bank.rate)*TYPES.bank.income*(1+(t.level-1)*.25);
+    },0);
+    const bonus=Math.floor((income+seconds/90)*(1+(profile.level-1)*.05));
+    const xp=Math.floor(seconds/30)+Math.floor(bonus/20);
+    let waves=0;
+    if(state.autoWave&&!state.gameOver&&!state.won){
+      waves=Math.min(Math.floor(seconds/45),100-state.wave);
+      state.wave+=waves;
+      state.gold+=waves*30;
+      if(state.wave>=100)state.won=true;
+    }
+    state.gold+=bonus;addXP(xp);
+    if(bonus||waves)toast("AWAY PROGRESS  +$"+bonus+"  +"+xp+" XP"+(waves?"  +"+waves+" WAVES":""));
+  }
+
+  function frame(now){
+    const raw=Math.min(.05,(now-last)/1000);
+    last=now;
+    saveTimer+=raw;
+    if(saveTimer>=2){
+      saveTimer=0;
+      if(state.started&&!state.gameOver&&!state.won)saveGame(false);
+    }
+    if(toastTimer>0){toastTimer-=raw;if(toastTimer<=0)document.getElementById("message").classList.add("hidden");}update(raw);draw();requestAnimationFrame(frame);}
+  window.addEventListener("pagehide",()=>{if(state&&state.started&&!state.gameOver&&!state.won)saveGame(false);});
+  window.addEventListener("pagehide",()=>{if(state&&state.started&&!state.gameOver&&!state.won)saveGame(false);});
+  requestAnimationFrame(frame);
+})();
++cost+'</span></button>';
         }).join('');
       }
       sellBtn.disabled=!selected.length;document.getElementById("sellValue").textContent=selected.length>1?"$"+selected.reduce((sum,x)=>sum+Math.floor(x.totalSpent*.68),0):"$"+Math.floor(t.totalSpent*.68);sellBtn.firstChild.textContent=selected.length>1?"SELL ALL ":"SELL ";
