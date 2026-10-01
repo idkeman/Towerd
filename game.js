@@ -222,7 +222,7 @@ const UNLOCKS={
         time:state.time,difficulty:state.difficulty||"easy",
         selectedBuild:state.selectedBuild,
         towers:state.towers.map(t=>({
-          type:t.type,x:t.x,y:t.y,level:t.level,branches:branchLevels(t),cooldown:t.cooldown,
+          type:t.type,x:t.x,y:t.y,level:t.level,branches:branchLevels(t),cooldown:t.cooldown,abilityCooldown:t.abilityCooldown||0,abilityBuffUntil:t.abilityBuffUntil||0,abilityBuff:t.abilityBuff||0,
           totalSpent:t.totalSpent,kills:t.kills,targetMode:t.targetMode||"furthest"
         })),
         traps:state.traps.filter(t=>!t.dead).map(t=>({
@@ -272,7 +272,7 @@ const UNLOCKS={
         betweenTimer:Number(save.betweenTimer)||0,time:Number(save.time)||0,shake:0
       };
 
-      state.towers=state.towers.filter(t=>TYPES[t.type]).map(t=>{const branches=Array.isArray(t.branches)?t.branches.map(v=>Math.max(0,Math.min(5,Number(v)||0))):[Math.max(0,Math.min(5,(Number(t.level)||1)-1)),0,0];return {type:t.type,x:Number(t.x),y:Number(t.y),level:1+Math.min(5,branches.reduce((a,b)=>a+b,0)),branches,cooldown:Number(t.cooldown)||0,totalSpent:Number(t.totalSpent)||TYPES[t.type].cost,kills:Number(t.kills)||0,targetMode:t.targetMode||"furthest"};});
+      state.towers=state.towers.filter(t=>TYPES[t.type]).map(t=>{const branches=Array.isArray(t.branches)?t.branches.map(v=>Math.max(0,Math.min(5,Number(v)||0))):[Math.max(0,Math.min(5,(Number(t.level)||1)-1)),0,0];return {type:t.type,x:Number(t.x),y:Number(t.y),level:1+Math.max(...branches),branches,cooldown:Number(t.cooldown)||0,abilityCooldown:Number(t.abilityCooldown)||0,abilityBuffUntil:Number(t.abilityBuffUntil)||0,abilityBuff:Number(t.abilityBuff)||0,totalSpent:Number(t.totalSpent)||TYPES[t.type].cost,kills:Number(t.kills)||0,targetMode:t.targetMode||"furthest"};});
       state.traps=state.traps.filter(t=>Number.isFinite(Number(t.x))&&Number.isFinite(Number(t.y))).map(t=>({
         x:Number(t.x),y:Number(t.y),damage:Number(t.damage)||TYPES.trap.damage,life:Number(t.life)||TYPES.trap.trapLife,
         slow:Number(t.slow)||TYPES.trap.slow,slowTime:Number(t.slowTime)||TYPES.trap.slowTime,towerType:t.towerType||"trap",dead:false
@@ -491,7 +491,7 @@ const UNLOCKS={
     return {
       damage:(d.damage||0)*(1+top*.22+bot*.06),
       range:(d.range||0)*(1+top*.06+bot*.08),
-      rate:(d.rate||1)*Math.pow(.94,top)*Math.pow(.86,mid)*Math.pow(.93,bot),
+      rate:(d.rate||1)*Math.pow(.94,top)*Math.pow(.86,mid)*Math.pow(.93,bot)*(t.abilityBuffUntil>state.time?1-t.abilityBuff:1),
       projectile:(d.projectile||0)*(1+top*.05+bot*.12),
       splash:(d.splash||0)+bot*10,
       slow:Math.max(.25,(d.slow||1)-bot*.07),
@@ -502,6 +502,8 @@ const UNLOCKS={
   function upgradeBranchSelection(index){
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
     if(!selected.length)return;
+    const tier5Candidates=selected.filter(t=>branchLevels(t)[index]+1===5);
+    if(tier5Candidates.length>1||tier5Candidates.some(t=>!canPlaceTier5(t.type))){toast("ONLY ONE TIER 5 "+TYPES[tier5Candidates[0]?.type||selected[0].type].name+" CAN BE PLACED");return;}
     const invalid=selected.find(t=>{
       const next=branchLevels(t)[index]+1;
       return !canUpgradeBranch(t,index)||!isTierUnlocked(t.type,index,next)||(next===5&&!canPlaceTier5(t.type));
@@ -536,7 +538,7 @@ const UNLOCKS={
     const type=TYPES[state.selectedBuild];
     if(state.gold<type.cost){toast("NOT ENOUGH GOLD");return;}
     if(!isBuildable(x,y))return;
-    const t={type:state.selectedBuild,x,y,level:1,branches:[0,0,0],cooldown:0,totalSpent:type.cost,kills:0,targetMode:"furthest"};
+    const t={type:state.selectedBuild,x,y,level:1,branches:[0,0,0],cooldown:0,abilityCooldown:0,abilityBuffUntil:0,abilityBuff:0,totalSpent:type.cost,kills:0,targetMode:"furthest"};
     state.gold-=type.cost;state.towers.push(t);state.selectedTower=t;
     burst(x,y,type.color,12);updateUI();
   }
@@ -706,6 +708,7 @@ const UNLOCKS={
     if(tower)tower.kills++;
     awardShards(e.type==="boss"?12:0);
     addXP(Math.max(1,Math.floor(ENEMY[e.type].reward*.75)));
+    if(tower)addTowerXP(tower.type,Math.max(1,Math.floor(ENEMY[e.type].reward/12)));
     burst(e.x,e.y,ENEMY[e.type].color,10);
     floatText(e.x,e.y-18,"+$"+Math.max(1,Math.floor(ENEMY[e.type].reward*difficultyDef().reward)));
   }
