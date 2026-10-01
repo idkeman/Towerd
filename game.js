@@ -190,16 +190,16 @@ const UNLOCKS={
       :BRANCH_NAMES;
     paths.innerHTML=PATH_NAMES.map((path,p)=>{
       const rows=Array.from({length:5},(_,j)=>{
-        const tier=j+1,unlocked=tree[p][j],can=!unlocked;
+        const tier=j+1,unlocked=false,can=true;
         const label=type==="bank"?tierNames[pathKeys[p]==="power"?0:pathKeys[p]==="range"?1:2][j]:BRANCH_NAMES[pathKeys[p]][j];
-        return "<button class='tier-unlock "+(unlocked?"unlocked":"locked")+"' data-unlock-type='"+type+"' data-unlock-path='"+p+"' data-unlock-tier='"+tier+"' "+(can?"":"disabled")+" title='"+def.name+" · "+label+"'>"+
-          "<span class='tier-orb'>"+(unlocked?"✓":tier)+"</span><span class='tier-copy'><b>"+label+"</b><small>"+(unlocked?"OWNED":"FREE")+"</small></span></button>";
+        return "<button class='tier-unlock locked' data-unlock-type='"+type+"' data-unlock-path='"+p+"' data-unlock-tier='"+tier+"' title='"+def.name+" · "+label+" · upgrade in match'>"+
+          "<span class='tier-orb'>"+tier+"</span><span class='tier-copy'><b>"+label+"</b><small>AVAILABLE</small></span></button>";
       }).join("");
       const pathIcon=TOWER_LOGOS[type]||"•";
       return "<section class='upgrade-path-card' style='--path-color:"+PATH_COLORS[p]+"'>"+
         "<div class='upgrade-card-head'><div class='upgrade-tower-icon' style='--tower-color:"+def.color+"'>"+pathIcon+"</div>"+
         "<div class='upgrade-card-title'><b>"+def.name+" · "+pathLabels[p]+"</b><small>"+pathDescriptions[p]+"</small></div>"+
-        "<span class='upgrade-card-status'>"+(tree[p].filter(Boolean).length===5?"MAX UPGRADES":"5 TIERS")+"</span></div>"+
+        "<span class='upgrade-card-status'>"+"5 TIERS AVAILABLE"+"</span></div>"+
         "<div class='tier-row'>"+rows+"</div></section>";
     }).join("");
   }
@@ -650,18 +650,20 @@ const UNLOCKS={
   }
   function towerXP(type){return Math.max(0,Number(profile.towerXP?.[type])||0);}
   function towerUpgradeState(type){
-    const ready=[[true,true,true,true,true],[true,true,true,true,true],[true,true,true,true,true]];
-    profile.towerUpgrades[type]=ready;
-    return ready;
+    // Path tiers are available from the start of every placed tower.
+    // This is NOT the tower's current in-match upgrade state.
+    if(!profile.towerUpgrades[type])profile.towerUpgrades[type]=[[false,false,false,false,false],[false,false,false,false,false],[false,false,false,false,false]];
+    return profile.towerUpgrades[type];
   }
   function isTierUnlocked(type,pathIndex,tier){
-    if(tier<1||tier>5)return false;
-    return !!towerUpgradeState(type)[pathIndex][tier-1];
+    return !!TYPES[type]&&pathIndex>=0&&pathIndex<3&&tier>=1&&tier<=5;
   }
   function unlockTier(type,pathIndex,tier){
-    if(!TYPES[type]||pathIndex<0||pathIndex>2||tier<1||tier>5)return false;
-    towerUpgradeState(type)[pathIndex][tier-1]=true;
-    saveProfile();renderTowerUpgradeMenu();return true;
+    // Kept for compatibility with old saved/profile data. Path tiers no longer
+    // become permanently owned; each placed tower starts at 0-0-0.
+    if(!isTierUnlocked(type,pathIndex,tier))return false;
+    renderTowerUpgradeMenu();
+    return true;
   }
   function addTowerXP(type,amount){
     if(!TYPES[type])return;
