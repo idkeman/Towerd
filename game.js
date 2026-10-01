@@ -646,7 +646,9 @@ const UNLOCKS={
     return true;
   }
   function canPlaceTier5(type){
-    return state.towers.filter(t=>t.type===type&&branchLevels(t).includes(5)).length===0;
+    // A tower type may have up to three Tier 5 towers total:
+    // one Tier 5 for each branch (5-2-0, 2-5-0, 0-2-5).
+    return state.towers.filter(t=>t.type===type&&branchLevels(t).includes(5)).length<3;
   }
   function towerXP(type){return Math.max(0,Number(profile.towerXP?.[type])||0);}
   function towerUpgradeState(type){
@@ -720,12 +722,12 @@ const UNLOCKS={
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
     if(!selected.length)return;
     const tier5Candidates=selected.filter(t=>branchLevels(t)[index]+1===5);
-    if(tier5Candidates.length>1||tier5Candidates.some(t=>!canPlaceTier5(t.type))){toast("ONLY ONE TIER 5 "+TYPES[tier5Candidates[0]?.type||selected[0].type].name+" CAN BE PLACED");return;}
+    if(tier5Candidates.length>1||tier5Candidates.some(t=>!canPlaceTier5(t.type))){toast("MAX 3 TIER 5 "+TYPES[tier5Candidates[0]?.type||selected[0].type].name+" TOWERS");return;}
     const invalid=selected.find(t=>{
       const next=branchLevels(t)[index]+1;
       return !canUpgradeBranch(t,index)||!isTierUnlocked(t.type,index,next)||(next===5&&!canPlaceTier5(t.type));
     });
-    if(invalid){toast("PATH LOCKED, TIER NOT UNLOCKED, OR TIER 5 ALREADY PLACED");return;}
+    if(invalid){toast("PATH LOCKED, TIER NOT UNLOCKED, OR 3 TIER 5 TOWERS ALREADY PLACED");return;}
     const costs=selected.map(t=>Math.floor(TYPES[t.type].cost*(.5+branchLevels(t)[index]*.38))),total=costs.reduce((a,b)=>a+b,0);
     if(state.gold<total){toast("NEED $"+total+" TO UPGRADE ALL");return;}
     state.gold-=total;
