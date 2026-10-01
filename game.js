@@ -357,13 +357,18 @@ const UNLOCKS={
 
   function makeControlPanelDraggable(){
     const panel=document.getElementById("controlPanel");
-    if(!panel)return;
+    const handle=panel?.querySelector(".control-modebar");
+    if(!panel||!handle)return;
+
+    handle.setAttribute("data-drag-handle","true");
 
     let dragging=false;
     let startX=0,startY=0,startLeft=0,startTop=0;
 
-    const begin=event=>{
+    document.addEventListener("pointerdown",event=>{
       if(!panel.classList.contains("tower-mode"))return;
+      if(!event.target.closest("#controlPanel"))return;
+      if(!event.target.closest("[data-drag-handle]"))return;
       if(event.target.closest("button,input,select,textarea"))return;
 
       const rect=panel.getBoundingClientRect();
@@ -378,11 +383,15 @@ const UNLOCKS={
       panel.style.right="auto";
       panel.style.bottom="auto";
       panel.style.transform="none";
+      panel.dataset.dragLeft=startLeft;
+      panel.dataset.dragTop=startTop;
       panel.classList.add("dragging");
-      event.preventDefault();
-    };
 
-    const move=event=>{
+      event.preventDefault();
+      event.stopPropagation();
+    },true);
+
+    document.addEventListener("pointermove",event=>{
       if(!dragging)return;
 
       const maxLeft=Math.max(0,window.innerWidth-panel.offsetWidth);
@@ -394,35 +403,20 @@ const UNLOCKS={
       panel.style.top=top+"px";
       panel.dataset.dragLeft=left;
       panel.dataset.dragTop=top;
-    };
 
-    const end=()=>{
+      event.preventDefault();
+      event.stopPropagation();
+    },true);
+
+    const endDrag=event=>{
       if(!dragging)return;
       dragging=false;
       panel.classList.remove("dragging");
+      event?.stopPropagation?.();
     };
 
-    /* Attach to the whole panel so the header cannot lose the drag target. */
-    panel.addEventListener("mousedown",begin);
-    window.addEventListener("mousemove",move);
-    window.addEventListener("mouseup",end);
-
-    panel.addEventListener("touchstart",event=>{
-      if(!panel.classList.contains("tower-mode"))return;
-      if(event.target.closest("button,input,select,textarea"))return;
-      const touch=event.touches[0];
-      begin({clientX:touch.clientX,clientY:touch.clientY,target:event.target,preventDefault:()=>event.preventDefault()});
-    },{passive:false});
-
-    window.addEventListener("touchmove",event=>{
-      if(!dragging)return;
-      const touch=event.touches[0];
-      if(!touch)return;
-      move({clientX:touch.clientX,clientY:touch.clientY});
-      event.preventDefault();
-    },{passive:false});
-
-    window.addEventListener("touchend",end);
+    document.addEventListener("pointerup",endDrag,true);
+    document.addEventListener("pointercancel",endDrag,true);
   }
 
   function setControlMode(mode){
