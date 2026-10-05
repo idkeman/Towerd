@@ -619,7 +619,7 @@ const UNLOCKS={
     state.gold-=netCost;
     const replacements=selected.map(old=>{
       const replacement={type:newType,x:old.x,y:old.y,level:1,cooldown:0,totalSpent:def.cost,kills:0,targetMode:"furthest"};
-      if(old.type==="trap")state.traps=state.traps.filter(tr=>Math.hypot(tr.x-old.x)<1||tr.towerType!=="trap");
+      if(old.type==="trap")state.traps=state.traps.filter(tr=>Math.hypot(tr.x-old.x)>=1||tr.towerType!=="trap");
       burst(old.x,old.y,def.color,14);
       return replacement;
     });
@@ -1472,6 +1472,8 @@ const UNLOCKS={
     if(t&&!isSelectedParagon){
       const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;
       state.selectedBuild=t.type;
+      const towerUpgradeMenu=document.getElementById("towerUpgradeMenu");
+      if(towerUpgradeMenu)towerUpgradeMenu.hidden=false;
       renderTowerUpgradeMenu();
       const paragonPanel=document.getElementById("paragonPanel");
       if(paragonPanel){
@@ -1515,7 +1517,8 @@ const UNLOCKS={
       targetSelect.disabled=true;
       targetSelect.value="furthest";
       document.getElementById("abilityButton").disabled=true;
-      renderTowerUpgradeMenu();
+      const towerUpgradeMenu=document.getElementById("towerUpgradeMenu");
+      if(towerUpgradeMenu)towerUpgradeMenu.hidden=true;
       const paragonPanel=document.getElementById("paragonPanel");
       if(paragonPanel){
         paragonPanel.hidden=false;
