@@ -1468,7 +1468,8 @@ const UNLOCKS={
     document.getElementById("waveValue").textContent=state.wave;document.getElementById("goldValue").textContent=state.gold;document.getElementById("livesValue").textContent=state.lives;updateDifficultyUI();
     const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
     const t=selected[0],info=document.getElementById("towerInfo"),sellBtn=document.getElementById("sellButton"),targetSelect=document.getElementById("targetMode"),selectAllBtn=document.getElementById("selectAllSameButton"),replaceBtn=document.getElementById("replaceButton"),branchBox=document.getElementById("branchControls");
-    if(t){
+    const isSelectedParagon=!!(t&&state.paragons&&Object.values(state.paragons).includes(t));
+    if(t&&!isSelectedParagon){
       const d=TYPES[t.type],levels=branchLevels(t),points=branchPoints(t),stats=towerStats(t),ability=stats.ability;
       state.selectedBuild=t.type;
       renderTowerUpgradeMenu();
@@ -1502,6 +1503,27 @@ const UNLOCKS={
         return "<button type='button' class='branch-button "+(locked?"branch-locked":"")+"' data-branch='"+i+"' "+(disabled?"disabled":"")+"><b>"+label+" · Lv."+lv+"</b><span>"+b.desc+" · $"+cost+"</span></button>";
       }).join("");
       sellBtn.disabled=false;document.getElementById("sellValue").textContent=selected.length>1?"$"+selected.reduce((sum,x)=>sum+Math.floor(x.totalSpent*.68),0):"$"+Math.floor(t.totalSpent*.68);sellBtn.firstChild.textContent="♻ ";selectAllBtn.disabled=false;replaceBtn.disabled=selected.some(x=>x.type===state.selectedBuild);replaceBtn.textContent="↻";
+    }else if(isSelectedParagon){
+      const d=TYPES[t.type],p=state.paragons[t.type],stats=paragonStats(t);
+      info.innerHTML="<b>"+PARAGONS[t.type].name+" · DEGREE "+paragonDegree(t.type)+"</b><span>Paragon · "+d.name+"<br>Damage "+(d.damage?Math.floor(stats.damage):"—")+" · Range "+Math.floor(stats.range)+"<br><strong>Permanent endgame tower</strong>: feed it cash to increase its degree.</span>";
+      if(branchBox)branchBox.innerHTML="";
+      sellBtn.disabled=true;
+      document.getElementById("sellValue").textContent="$—";
+      selectAllBtn.disabled=true;
+      replaceBtn.disabled=true;
+      replaceBtn.textContent="REPLACE SELECTED";
+      targetSelect.disabled=true;
+      targetSelect.value="furthest";
+      document.getElementById("abilityButton").disabled=true;
+      renderTowerUpgradeMenu();
+      const paragonPanel=document.getElementById("paragonPanel");
+      if(paragonPanel){
+        paragonPanel.hidden=false;
+        document.getElementById("paragonTitle").textContent=PARAGONS[t.type].name;
+        document.getElementById("paragonStatus").textContent="Degree "+paragonDegree(t.type)+" · Sacrifice "+Math.floor(p.sacrificeValue)+" + $"+Math.floor(p.extraCash);
+        document.getElementById("paragonCreateButton").disabled=true;
+        document.getElementById("paragonCreateButton").textContent="PARAGON ACTIVE";
+      }
     }else{
       info.innerHTML="<b>No tower selected</b><span>Choose a build type, then click anywhere off the road to build.</span>";sellBtn.disabled=true;targetSelect.disabled=true;targetSelect.value="furthest";selectAllBtn.disabled=true;replaceBtn.disabled=true;replaceBtn.textContent="REPLACE SELECTED";document.getElementById("sellValue").textContent="$—";if(branchBox)branchBox.innerHTML="";
     }
@@ -1519,28 +1541,6 @@ const UNLOCKS={
   function win(){state.won=true;state.waveActive=false;overlayResult("You held the line.","One hundred waves defeated. The base is secure.","PLAY AGAIN");}
 
   let last=performance.now();
-  function applyOfflineProgress(savedAt){
-    const away=Math.max(0,Math.floor((Date.now()-Number(savedAt||Date.now()))/1000));
-    const cap=Math.min(43200,(2+profile.level*.5)*3600);
-    const seconds=Math.min(away,cap);
-    if(seconds<10)return;
-    const income=state.towers.reduce((sum,t)=>{
-      if(t.type!=="bank")return sum;
-      return sum+(seconds/TYPES.bank.rate)*TYPES.bank.income*(1+(t.level-1)*.25);
-    },0);
-    const bonus=Math.floor((income+seconds/90)*(1+(profile.level-1)*.05));
-    const xp=Math.floor(seconds/30)+Math.floor(bonus/20);
-    let waves=0;
-    if(state.autoWave&&!state.gameOver&&!state.won){
-      waves=Math.min(Math.floor(seconds/45),100-state.wave);
-      state.wave+=waves;
-      state.gold+=waves*30;
-      if(state.wave>=100)state.won=true;
-    }
-    state.gold+=bonus;addXP(xp);
-    if(bonus||waves)toast("AWAY PROGRESS  +$"+bonus+"  +"+xp+" XP"+(waves?"  +"+waves+" WAVES":""));
-  }
-
   function frame(now){
     const raw=Math.min(.05,(now-last)/1000);
     last=now;
@@ -1550,7 +1550,6 @@ const UNLOCKS={
       if(state.started&&!state.gameOver&&!state.won)saveGame(false);
     }
     if(toastTimer>0){toastTimer-=raw;if(toastTimer<=0)document.getElementById("message").classList.add("hidden");}update(raw);draw();requestAnimationFrame(frame);}
-  window.addEventListener("pagehide",()=>{if(state&&state.started&&!state.gameOver&&!state.won)saveGame(false);});
   window.addEventListener("pagehide",()=>{if(state&&state.started&&!state.gameOver&&!state.won)saveGame(false);});
   requestAnimationFrame(frame);
 })();
