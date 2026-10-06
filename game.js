@@ -1228,16 +1228,135 @@ const UNLOCKS={
     ctx.restore();
   }
 
+  const PARAGON_SPRITES={
+    dart:{shape:"arrow",spikes:4,core:8,orbit:2},
+    cannon:{shape:"barrel",spikes:6,core:9,orbit:1},
+    frost:{shape:"snow",spikes:6,core:7,orbit:3},
+    sniper:{shape:"crosshair",spikes:4,core:6,orbit:2},
+    machine:{shape:"rotor",spikes:8,core:7,orbit:1},
+    flame:{shape:"flame",spikes:5,core:8,orbit:2},
+    tesla:{shape:"bolt",spikes:6,core:7,orbit:3},
+    poison:{shape:"skull",spikes:6,core:8,orbit:2},
+    missile:{shape:"missile",spikes:6,core:7,orbit:1},
+    railgun:{shape:"rail",spikes:4,core:7,orbit:3},
+    mortar:{shape:"mortar",spikes:7,core:9,orbit:1},
+    boomerang:{shape:"boomerang",spikes:5,core:7,orbit:2},
+    laser:{shape:"beam",spikes:4,core:6,orbit:3},
+    plasma:{shape:"star",spikes:8,core:8,orbit:2},
+    crystal:{shape:"crystal",spikes:6,core:8,orbit:3},
+    shockwave:{shape:"wave",spikes:5,core:7,orbit:2},
+    drone:{shape:"drone",spikes:6,core:7,orbit:3},
+    bunker:{shape:"fort",spikes:8,core:9,orbit:1},
+    chrono:{shape:"clock",spikes:12,core:7,orbit:2},
+    gravity:{shape:"blackhole",spikes:8,core:8,orbit:3},
+    meteor:{shape:"meteor",spikes:7,core:9,orbit:1},
+    bank:{shape:"coin",spikes:8,core:9,orbit:2},
+    trap:{shape:"spike",spikes:10,core:7,orbit:1},
+    ember:{shape:"inferno",spikes:8,core:9,orbit:3},
+    ballista:{shape:"ballista",spikes:5,core:7,orbit:2},
+    warden:{shape:"shield",spikes:6,core:9,orbit:2},
+    oracle:{shape:"eye",spikes:6,core:7,orbit:3},
+    harvester:{shape:"harvester",spikes:7,core:8,orbit:1},
+    frostbite:{shape:"icefang",spikes:8,core:8,orbit:3},
+    arc:{shape:"arc",spikes:7,core:7,orbit:2},
+    volley:{shape:"fan",spikes:6,core:8,orbit:1},
+    sentinel:{shape:"sentinel",spikes:8,core:9,orbit:2},
+    beacon:{shape:"beacon",spikes:6,core:8,orbit:3},
+    vortex:{shape:"vortex",spikes:9,core:7,orbit:2},
+    siege:{shape:"siege",spikes:8,core:9,orbit:1},
+    swarm:{shape:"swarm",spikes:10,core:7,orbit:3},
+    sun:{shape:"sun",spikes:12,core:9,orbit:2},
+    void:{shape:"void",spikes:8,core:8,orbit:3},
+    titan:{shape:"titan",spikes:6,core:10,orbit:1},
+    prism:{shape:"prism",spikes:6,core:8,orbit:3},
+    plague:{shape:"plague",spikes:9,core:8,orbit:2},
+    overdrive:{shape:"gear",spikes:10,core:8,orbit:1},
+    doomsday:{shape:"apocalypse",spikes:12,core:10,orbit:3}
+  };
+
+  function polygonPath(radius,count,rotation=0){
+    ctx.beginPath();
+    for(let i=0;i<count;i++){
+      const a=rotation+i*Math.PI*2/count;
+      const x=Math.cos(a)*radius,y=Math.sin(a)*radius;
+      i?ctx.lineTo(x,y):ctx.moveTo(x,y);
+    }
+    ctx.closePath();
+  }
+
+  function drawParagonSprite(type,color,degree){
+    const q=PARAGON_SPRITES[type]||PARAGON_SPRITES.dart;
+    const r=27+degree*.08, c=q.core+Math.min(5,degree*.04);
+    ctx.save();
+    ctx.lineJoin="round";
+    ctx.lineCap="round";
+    ctx.fillStyle="#080c15";
+    ctx.strokeStyle=color;
+    ctx.lineWidth=3.2;
+
+    // Every Paragon has a distinct base silhouette.
+    if(q.shape==="arrow"){polygonPath(r,4,Math.PI/4);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-18,8);ctx.lineTo(18,-8);ctx.stroke();}
+    else if(q.shape==="barrel"){ctx.beginPath();ctx.roundRect(-13,-21,26,42,7);ctx.fill();ctx.stroke();ctx.fillStyle=color;ctx.fillRect(-6,-25,12,18);}
+    else if(q.shape==="snow"){polygonPath(r,6,Math.PI/6);ctx.fill();ctx.stroke();for(let i=0;i<3;i++){ctx.beginPath();ctx.moveTo(-20+i*20,20);ctx.lineTo(20-i*20,-20);ctx.stroke();}}
+    else if(q.shape==="crosshair"){ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.stroke();for(let i=0;i<4;i++){const a=i*Math.PI/2;ctx.beginPath();ctx.moveTo(Math.cos(a)*12,Math.sin(a)*12);ctx.lineTo(Math.cos(a)*25,Math.sin(a)*25);ctx.stroke();}}
+    else if(q.shape==="rotor"){ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.roundRect(Math.cos(a)*16-3,Math.sin(a)*16-7,6,14,3);ctx.stroke();}ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="flame"){ctx.beginPath();ctx.moveTo(0,-r);ctx.bezierCurveTo(18,-12,19,10,7,17);ctx.bezierCurveTo(4,28,-15,18,-13,5);ctx.bezierCurveTo(-24,-5,-8,-15,0,-r);ctx.fill();ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(0,-c);ctx.bezierCurveTo(8,-3,8,8,0,c);ctx.bezierCurveTo(-8,8,-7,-3,0,-c);ctx.fill();}
+    else if(q.shape==="bolt"){ctx.beginPath();ctx.moveTo(7,-r);ctx.lineTo(-14,-2);ctx.lineTo(-2,-2);ctx.lineTo(-9,r);ctx.lineTo(15,0);ctx.lineTo(4,0);ctx.closePath();ctx.fill();ctx.stroke();}
+    else if(q.shape==="skull"){ctx.beginPath();ctx.arc(0,-4,r*.72,Math.PI,0);ctx.lineTo(r*.72,13);ctx.lineTo(7,13);ctx.lineTo(7,20);ctx.lineTo(-7,20);ctx.lineTo(-7,13);ctx.lineTo(-r*.72,13);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.arc(-8,-2,4,0,Math.PI*2);ctx.arc(8,-2,4,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="missile"){ctx.beginPath();ctx.moveTo(0,-r);ctx.lineTo(13,-8);ctx.lineTo(10,18);ctx.lineTo(0,12);ctx.lineTo(-10,18);ctx.lineTo(-13,-8);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(0,-r);ctx.lineTo(0,18);ctx.stroke();}
+    else if(q.shape==="rail"){ctx.beginPath();ctx.roundRect(-r,-7,r*2,14,5);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-20,-15);ctx.lineTo(20,-15);ctx.moveTo(-20,15);ctx.lineTo(20,15);ctx.stroke();}
+    else if(q.shape==="mortar"){ctx.beginPath();ctx.arc(0,5,r*.8,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-4,5);ctx.lineTo(8,-r);ctx.lineTo(15,-r+3);ctx.stroke();}
+    else if(q.shape==="boomerang"){ctx.beginPath();ctx.arc(0,0,r*.82,-2.45,.55);ctx.lineWidth=9;ctx.stroke();ctx.lineWidth=3.2;ctx.stroke();}
+    else if(q.shape==="beam"){ctx.beginPath();ctx.moveTo(-r,0);ctx.lineTo(r,0);ctx.lineWidth=10;ctx.stroke();ctx.lineWidth=3.2;ctx.beginPath();ctx.moveTo(-r,0);ctx.lineTo(r,0);ctx.stroke();ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.stroke();}
+    else if(q.shape==="star"){polygonPath(r,8,Math.PI/8);ctx.fill();ctx.stroke();polygonPath(c,4,Math.PI/4);ctx.fillStyle=color;ctx.fill();}
+    else if(q.shape==="crystal"){polygonPath(r,6,Math.PI/6);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-9,-20);ctx.lineTo(2,20);ctx.moveTo(9,-20);ctx.lineTo(-2,20);ctx.stroke();}
+    else if(q.shape==="wave"){ctx.beginPath();for(let i=-1;i<=1;i++){ctx.arc(0,0,r-i*7,-.9,.9);ctx.stroke();}ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.stroke();}
+    else if(q.shape==="drone"){ctx.beginPath();ctx.ellipse(0,0,r*.9,r*.55,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-r,-7);ctx.lineTo(-r-9,-16);ctx.moveTo(r,-7);ctx.lineTo(r+9,-16);ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="fort"){ctx.beginPath();ctx.rect(-r*.7,-r*.7,r*1.4,r*1.4);ctx.fill();ctx.stroke();for(let x=-15;x<=15;x+=15){ctx.fillStyle=color;ctx.fillRect(x-4,-r,8,10);ctx.fillRect(x-4,r-10,8,10);}}
+    else if(q.shape==="clock"){ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();for(let i=0;i<12;i++){const a=i*Math.PI/6;ctx.beginPath();ctx.moveTo(Math.cos(a)*20,Math.sin(a)*20);ctx.lineTo(Math.cos(a)*r*.86,Math.sin(a)*r*.86);ctx.stroke();}ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(0,-17);ctx.moveTo(0,0);ctx.lineTo(13,8);ctx.stroke();}
+    else if(q.shape==="blackhole"){ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle=color;for(let i=0;i<3;i++){ctx.beginPath();ctx.ellipse(0,0,r-5-i*5,r*.38-i*3,.35+i*.35,0,Math.PI*2);ctx.stroke();}ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="meteor"){polygonPath(r,7,Math.PI/7);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-r,12);ctx.lineTo(-r-15,22);ctx.moveTo(-15,-r);ctx.lineTo(-28,-r-12);ctx.stroke();}
+    else if(q.shape==="coin"){ctx.beginPath();ctx.ellipse(0,0,r*.72,r,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=color;ctx.font="900 25px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("$",0,1);}
+    else if(q.shape==="spike"){ctx.beginPath();ctx.arc(0,0,r*.7,0,Math.PI*2);ctx.fill();ctx.stroke();for(let i=0;i<10;i++){const a=i*Math.PI/5;ctx.beginPath();ctx.moveTo(Math.cos(a)*15,Math.sin(a)*15);ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);ctx.stroke();}}
+    else if(q.shape==="inferno"){ctx.beginPath();ctx.arc(0,4,r*.7,0,Math.PI*2);ctx.fill();ctx.stroke();for(let i=0;i<8;i++){const a=i*Math.PI/4;ctx.beginPath();ctx.moveTo(Math.cos(a)*15,Math.sin(a)*15);ctx.lineTo(Math.cos(a)*(r+5),Math.sin(a)*(r+5));ctx.stroke();}ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="ballista"){ctx.beginPath();ctx.moveTo(-r,-r*.6);ctx.lineTo(r,r*.6);ctx.moveTo(-r,r*.6);ctx.lineTo(r,-r*.6);ctx.stroke();ctx.beginPath();ctx.moveTo(-r,0);ctx.lineTo(r,0);ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.moveTo(r+7,0);ctx.lineTo(r-6,-6);ctx.lineTo(r-6,6);ctx.closePath();ctx.fill();}
+    else if(q.shape==="shield"){ctx.beginPath();ctx.moveTo(0,-r);ctx.lineTo(r*.75,-r*.45);ctx.lineTo(r*.65,r*.45);ctx.lineTo(0,r);ctx.lineTo(-r*.65,r*.45);ctx.lineTo(-r*.75,-r*.45);ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="eye"){ctx.beginPath();ctx.ellipse(0,0,r,r*.55,0,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="harvester"){ctx.beginPath();ctx.arc(0,0,r*.55,0,Math.PI*2);ctx.fill();ctx.stroke();for(let i=0;i<7;i++){const a=i*Math.PI*2/7;ctx.beginPath();ctx.moveTo(Math.cos(a)*13,Math.sin(a)*13);ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);ctx.stroke();}}
+    else if(q.shape==="icefang"){ctx.beginPath();ctx.moveTo(-r,0);ctx.lineTo(-10,-r);ctx.lineTo(0,-12);ctx.lineTo(10,-r);ctx.lineTo(r,0);ctx.lineTo(0,r);ctx.closePath();ctx.fill();ctx.stroke();}
+    else if(q.shape==="arc"){ctx.beginPath();ctx.arc(0,0,r,-2.4,.4);ctx.stroke();ctx.beginPath();ctx.arc(0,0,r,-.7,2.1);ctx.stroke();ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();}
+    else if(q.shape==="fan"){for(let i=-2;i<=2;i++){ctx.beginPath();ctx.moveTo(0,0);ctx.lineTo(Math.cos(i*.32-.9)*r,Math.sin(i*.32-.9)*r);ctx.stroke();}}
+    else if(q.shape==="sentinel"){polygonPath(r,8,Math.PI/8);ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle="#fff";ctx.stroke();}
+    else if(q.shape==="beacon"){ctx.beginPath();ctx.moveTo(0,-r);ctx.lineTo(r*.6,r);ctx.lineTo(-r*.6,r);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.stroke();}
+    else if(q.shape==="vortex"){ctx.beginPath();for(let i=0;i<3;i++){ctx.arc(0,0,r-i*7,.2+i*.7,5.5-i*.7);ctx.stroke();}}
+    else if(q.shape==="siege"){ctx.beginPath();ctx.rect(-r*.75,-r*.55,r*1.5,r*1.1);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-5,-r*.55);ctx.lineTo(r*.85,-r*.95);ctx.lineWidth=8;ctx.stroke();ctx.lineWidth=3.2;}
+    else if(q.shape==="swarm"){for(let i=0;i<7;i++){const a=i*Math.PI*2/7,rr=14+((i%2)*6);ctx.beginPath();ctx.arc(Math.cos(a)*rr,Math.sin(a)*rr,6,0,Math.PI*2);ctx.fill();ctx.stroke();}}
+    else if(q.shape==="sun"){ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fillStyle=color;ctx.fill();ctx.stroke();for(let i=0;i<12;i++){const a=i*Math.PI/6;ctx.beginPath();ctx.moveTo(Math.cos(a)*(c+3),Math.sin(a)*(c+3));ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);ctx.stroke();}}
+    else if(q.shape==="void"){ctx.beginPath();ctx.arc(0,0,r,0,Math.PI*2);ctx.fill();ctx.stroke();ctx.strokeStyle=color;ctx.beginPath();ctx.arc(0,0,c+5,0,Math.PI*2);ctx.stroke();ctx.fillStyle="#000";ctx.beginPath();ctx.arc(0,0,c*.55,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="titan"){ctx.beginPath();ctx.moveTo(0,-r);ctx.lineTo(r*.8,-r*.35);ctx.lineTo(r*.65,r);ctx.lineTo(-r*.65,r);ctx.lineTo(-r*.8,-r*.35);ctx.closePath();ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-12,-8);ctx.lineTo(0,10);ctx.lineTo(12,-8);ctx.stroke();}
+    else if(q.shape==="prism"){polygonPath(r,6,Math.PI/6);ctx.fill();ctx.stroke();ctx.beginPath();ctx.moveTo(-r*.6,r*.5);ctx.lineTo(r*.6,-r*.5);ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="plague"){ctx.beginPath();ctx.arc(0,0,r*.7,0,Math.PI*2);ctx.fill();ctx.stroke();for(let i=0;i<9;i++){const a=i*Math.PI*2/9;ctx.beginPath();ctx.arc(Math.cos(a)*r*.72,Math.sin(a)*r*.72,4,0,Math.PI*2);ctx.fill();}}
+    else if(q.shape==="gear"){ctx.beginPath();for(let i=0;i<20;i++){const a=i*Math.PI/10,rr=i%2?r:r*.78;const x=Math.cos(a)*rr,y=Math.sin(a)*rr;i?ctx.lineTo(x,y):ctx.moveTo(x,y);}ctx.closePath();ctx.fill();ctx.stroke();ctx.fillStyle=color;ctx.beginPath();ctx.arc(0,0,c,0,Math.PI*2);ctx.fill();}
+    else if(q.shape==="apocalypse"){ctx.beginPath();ctx.arc(0,0,r*.72,0,Math.PI*2);ctx.fill();ctx.stroke();for(let i=0;i<12;i++){const a=i*Math.PI/6;ctx.beginPath();ctx.moveTo(Math.cos(a)*16,Math.sin(a)*16);ctx.lineTo(Math.cos(a)*r,Math.sin(a)*r);ctx.stroke();}ctx.beginPath();ctx.moveTo(-12,-12);ctx.lineTo(12,12);ctx.moveTo(12,-12);ctx.lineTo(-12,12);ctx.stroke();}
+
+    // Unique orbiting accents scale with Paragon degree.
+    const orbitCount=q.orbit+Math.min(2,Math.floor(degree/35));
+    for(let i=0;i<orbitCount;i++){
+      const a=(performance.now()/900)*(i%2?-.7:.45)+i*Math.PI*2/orbitCount;
+      const rr=r+8+(i%2)*5;
+      ctx.fillStyle=color;ctx.beginPath();ctx.arc(Math.cos(a)*rr,Math.sin(a)*rr,2.5+(degree/80),0,Math.PI*2);ctx.fill();
+    }
+    ctx.restore();
+  }
+
   function drawParagons(){
     for(const p of Object.values(state.paragons||{})){
       const d=PARAGONS[p.type],s=paragonStats(p),selected=state.selectedTower===p;
       ctx.save();ctx.translate(p.x,p.y);
       ctx.shadowBlur=18+Math.min(40,s.degree);ctx.shadowColor=d.color;
-      ctx.fillStyle="#090d16";ctx.strokeStyle=d.color;ctx.lineWidth=4;
-      ctx.beginPath();ctx.arc(0,0,27+s.degree*.08,0,Math.PI*2);ctx.fill();ctx.stroke();
-      for(let i=0;i<Math.min(12,3+Math.floor(s.degree/8));i++){const a=i*Math.PI*2/Math.min(12,3+Math.floor(s.degree/8));ctx.beginPath();ctx.moveTo(Math.cos(a)*21,Math.sin(a)*21);ctx.lineTo(Math.cos(a)*34,Math.sin(a)*34);ctx.stroke();}
+      drawParagonSprite(p.type,d.color,s.degree);
       ctx.fillStyle="#fff";ctx.font="900 8px system-ui";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText("P"+s.degree,0,0);
-      if(selected){ctx.strokeStyle="rgba(255,255,255,.45)";ctx.beginPath();ctx.arc(0,0,s.range,0,Math.PI*2);ctx.stroke();}
+      if(selected){ctx.strokeStyle="rgba(255,255,255,.45)";ctx.lineWidth=2;ctx.beginPath();ctx.arc(0,0,s.range,0,Math.PI*2);ctx.stroke();}
       ctx.restore();
     }
   }
