@@ -1433,7 +1433,16 @@ const UNLOCKS={
       updateUI();
       return;
     }
-    if(e.key==="1")selectBuild("dart");if(e.key==="2")selectBuild("cannon");if(e.key==="3")selectBuild("frost");
+    if((e.key==="1"||e.key==="2"||e.key==="3")&&!typing){
+      const branchIndex=Number(e.key)-1;
+      const selected=(state.selectedTowers?.length?state.selectedTowers:(state.selectedTower?[state.selectedTower]:[])).filter(Boolean);
+      if(selected.length&&state.uiMode==="tower"){
+        e.preventDefault();
+        upgradeBranchSelection(branchIndex);
+        return;
+      }
+    }
+    if(e.key==="1"&&!typing)selectBuild("dart");if(e.key==="2"&&!typing)selectBuild("cannon");if(e.key==="3"&&!typing)selectBuild("frost");
     if(e.code==="Space"){e.preventDefault();if(!state.started)startGame();else if(!state.waveActive)startWave();}
     if(e.key==="Escape"){state.selectedTower=null;state.selectedTowers=[];state.multiPlace=false;setControlMode("wave");updateUI();}
     if(e.key.toLowerCase()==="r"&&state.gameOver){reset();startGame();}
