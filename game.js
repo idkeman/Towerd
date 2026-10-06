@@ -715,6 +715,9 @@ const UNLOCKS={
       splash:(d.splash||0)+bot*10,
       slow:Math.max(.25,(d.slow||1)-bot*.07),
       slowTime:(d.slowTime||0)+bot*.4,
+      income:d.income||0,
+      bonusChance:d.income?Math.min(.5,bot*.1):0,
+      bonusMultiplier:d.income&&bot>=4?2:1,
       ability
     };
   }
